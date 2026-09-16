@@ -1,0 +1,73 @@
+# Church Management System
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: cms-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cms
+      POSTGRES_PASSWORD: cms_password
+      POSTGRES_DB: church_management
+    ports:
+      - "5432:5432"
+    volumes:
+      - cms_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cms -d church_management"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: cms-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - cms_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cms-backend
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    environment:
+      - DATABASE_URL=postgresql://cms:cms_password@db:5432/church_management?schema=public
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-change-me-to-a-long-random-string-in-production}
+      - JWT_EXPIRES_IN=8h
+      - NODE_ENV=production
+      - PORT=3002
+      - FRONTEND_URL=http://localhost:3001
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cms-frontend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3002/api
+    depends_on:
+      - backend
+
+volumes:
+  cms_pgdata:
+  cms_redisdata:

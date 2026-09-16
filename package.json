@@ -1,0 +1,17 @@
+{
+  "name": "church-management-system",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Modern, cloud-based Church Management System",
+  "scripts": {
+    "setup": "npm --prefix backend install && npm --prefix backend run prisma:generate && npm --prefix backend run prisma:migrate && npm --prefix backend run seed && npm --prefix frontend install",
+    "dev:backend": "npm --prefix backend run start:dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build": "npm --prefix backend run build && npm --prefix frontend run build",
+    "start:backend": "npm --prefix backend run start:prod",
+    "start:frontend": "npm --prefix frontend run start",
+    "test:backend": "npm --prefix backend run test",
+    "test:frontend": "npm --prefix frontend run test:e2e",
+    "lint": "npm --prefix backend run lint; npm --prefix frontend run lint"
+  }
+}
