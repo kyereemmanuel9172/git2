@@ -214,9 +214,9 @@ export default function VisitorsPage() {
       <PageHeader
         title="Visitors"
         subtitle="Guests and first-timers"
-        action={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={exportCsv} disabled={data?.total === 0}>
+          action={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" onClick={exportCsv} disabled={data?.total === 0}>
               <Download className="h-4 w-4" />
               Export CSV
             </Button>

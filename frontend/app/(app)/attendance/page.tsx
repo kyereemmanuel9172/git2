@@ -576,7 +576,7 @@ export default function AttendancePage() {
         title="Attendance"
         subtitle={today}
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge color={register?.serviceScheduled ? 'green' : 'amber'}>
               {register?.serviceScheduled ? 'Service day' : 'No service scheduled'}
             </Badge>

@@ -369,9 +369,9 @@ export default function PodcastsPage() {
       <PageHeader
         title="Podcasts"
         subtitle="Sermons, speakers and episode publishing"
-        action={
-          <div className="flex items-center gap-2">
-            <div className="flex items-center rounded-lg border border-slate-200 bg-white">
+          action={
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center rounded-lg border border-slate-200 bg-white">
               <button
                 onClick={() => setViewMode('table')}
                 className={`p-2 ${viewMode === 'table' ? 'bg-brand-50 text-brand-600' : 'text-slate-400 hover:text-slate-600'}`}

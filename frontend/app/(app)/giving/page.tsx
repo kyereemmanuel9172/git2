@@ -319,12 +319,12 @@ export default function GivingPage() {
       <PageHeader
         title="Tithes & Offerings"
         subtitle="Reconcile giving by service, date, method and verified state"
-        action={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={exportCsv} disabled={items.length === 0}>
-              <Download className="h-4 w-4" />
-              Export CSV
-            </Button>
+          action={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" onClick={exportCsv} disabled={items.length === 0}>
+                <Download className="h-4 w-4" />
+                Export CSV
+              </Button>
             <Button variant="outline" onClick={exportPdf} disabled={items.length === 0}>
               <Download className="h-4 w-4" />
               Export PDF

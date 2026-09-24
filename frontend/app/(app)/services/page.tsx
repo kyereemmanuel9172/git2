@@ -177,9 +177,9 @@ export default function ServicesPage() {
       <PageHeader
         title="Services"
         subtitle="Service days and schedules"
-        action={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => setTodayOpen(true)} disabled={data?.serviceDays.length === 0}>
+          action={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" onClick={() => setTodayOpen(true)} disabled={data?.serviceDays.length === 0}>
               <CalendarPlus className="h-4 w-4" />
               Set service for a date
             </Button>

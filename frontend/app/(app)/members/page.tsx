@@ -622,7 +622,7 @@ export default function MembersPage() {
         title="Members"
         subtitle="Manage church members, church groups and membership records"
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             <Button variant="danger" onClick={clearAllMembers}>
               <Trash2 className="h-4 w-4" />
               Clear all
@@ -660,7 +660,7 @@ export default function MembersPage() {
             </option>
           ))}
         </Select>
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex w-full flex-wrap gap-2 sm:w-auto">
           <Button variant="outline" onClick={openPrintReport}>
             <Printer className="h-4 w-4" />
             Print report

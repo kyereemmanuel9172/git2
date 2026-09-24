@@ -309,12 +309,12 @@ export default function PaymentsPage() {
       <PageHeader
         title="Payments"
         subtitle="Transactions, methods and provider references"
-        action={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={exportCsv} disabled={items.length === 0}>
-              <Download className="h-4 w-4" />
-              Export CSV
-            </Button>
+          action={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" onClick={exportCsv} disabled={items.length === 0}>
+                <Download className="h-4 w-4" />
+                Export CSV
+              </Button>
             <Button onClick={() => setRecordOpen(true)} disabled={readOnly}>
               <Plus className="h-4 w-4" />
               Record payment

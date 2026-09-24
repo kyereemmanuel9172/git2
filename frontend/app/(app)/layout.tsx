@@ -35,9 +35,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}
           transition={{ duration: 0.3, ease: 'easeOut' }}
-          className="min-h-screen lg:ml-64"
+          className="min-h-screen overflow-x-clip lg:ml-64"
         >
-          <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-6">
+          <div className="mx-auto max-w-7xl px-4 pb-8 pt-16 sm:px-6 sm:pt-8 lg:px-6 lg:pt-8">
             <BirthdayPrompt />
             {children}
           </div>

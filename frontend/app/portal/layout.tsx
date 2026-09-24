@@ -111,21 +111,36 @@ function PortalSidebar({ member, logout, mobileOpen, setMobileOpen }: { member: 
       </aside>
 
       {/* Mobile sidebar overlay */}
-      {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
-          <aside className="relative flex h-full w-72 flex-col bg-slate-900">
-            <button
+      <AnimatePresence>
+        {mobileOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px]"
               onClick={() => setMobileOpen(false)}
-              className="absolute right-3 top-5 rounded-md p-1 text-slate-400 hover:text-white"
-              aria-label="Close menu"
+            />
+            <motion.aside
+              initial={{ x: -320 }}
+              animate={{ x: 0 }}
+              exit={{ x: -320 }}
+              transition={{ type: 'tween', duration: 0.25, ease: 'easeOut' }}
+              className="absolute inset-y-0 left-0 flex w-80 max-w-[85vw] flex-col bg-slate-900 shadow-2xl"
             >
-              <X className="h-5 w-5" />
-            </button>
-            {navContent}
-          </aside>
-        </div>
-      )}
+              <button
+                onClick={() => setMobileOpen(false)}
+                className="absolute right-3 top-5 rounded-md p-1 text-slate-400 hover:text-white"
+                aria-label="Close menu"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              {navContent}
+            </motion.aside>
+          </div>
+        )}
+      </AnimatePresence>
     </>
   );
 }
@@ -149,6 +164,15 @@ function PortalShell({ children }: { children: React.ReactNode }) {
     setMobileOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [mobileOpen]);
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50">
@@ -169,7 +193,7 @@ function PortalShell({ children }: { children: React.ReactNode }) {
       {/* Mobile hamburger button */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="fixed left-4 top-4 z-50 rounded-lg bg-slate-900 p-2 text-white shadow-lg lg:hidden"
+        className="fixed left-4 top-4 z-50 rounded-xl bg-slate-900 p-2.5 text-white shadow-lg shadow-slate-900/20 transition-transform active:scale-95 lg:hidden"
         aria-label="Open menu"
       >
         <Menu className="h-5 w-5" />
@@ -186,9 +210,9 @@ function PortalShell({ children }: { children: React.ReactNode }) {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}
           transition={{ duration: 0.3, ease: 'easeOut' }}
-          className="min-h-screen lg:ml-64"
+          className="min-h-screen overflow-x-clip lg:ml-64"
         >
-          <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-6">
+          <div className="mx-auto max-w-7xl px-4 pb-8 pt-16 sm:px-6 sm:pt-8 lg:px-6 lg:pt-8">
             <ErrorBoundary>{children}</ErrorBoundary>
           </div>
         </motion.main>

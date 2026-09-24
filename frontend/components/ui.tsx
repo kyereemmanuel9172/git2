@@ -52,10 +52,10 @@ export function Card({ className, children }: { className?: string; children: Re
 
 export function CardHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between border-b border-slate-100 px-5 py-4">
-      <div>
-        <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
-        {subtitle && <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>}
+    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-4">
+      <div className="min-w-0">
+        <h3 className="truncate text-sm font-semibold text-slate-800">{title}</h3>
+        {subtitle && <p className="mt-0.5 truncate text-xs text-slate-500">{subtitle}</p>}
       </div>
       {action}
     </div>
@@ -63,7 +63,7 @@ export function CardHeader({ title, subtitle, action }: { title: string; subtitl
 }
 
 export function CardBody({ className, children }: { className?: string; children: React.ReactNode }) {
-  return <div className={cn('px-5 py-4', className)}>{children}</div>;
+  return <div className={cn('px-4 py-4 sm:px-5', className)}>{children}</div>;
 }
 
 export function Input({
@@ -180,7 +180,7 @@ export function Modal({
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -189,12 +189,13 @@ export function Modal({
             onClick={onClose}
           />
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 8 }}
+            initial={{ opacity: 0, y: 24, scale: 1 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 24, scale: 1 }}
+            transition={{ type: 'tween', duration: 0.22, ease: 'easeOut' }}
             className={cn(
-              'relative w-full rounded-2xl bg-white shadow-xl',
-              wide ? 'max-w-3xl' : 'max-w-lg',
+              'relative w-full rounded-t-2xl bg-white shadow-xl sm:rounded-2xl',
+              wide ? 'sm:max-w-3xl' : 'sm:max-w-lg',
             )}
           >
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
@@ -203,7 +204,7 @@ export function Modal({
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="max-h-[75vh] overflow-y-auto px-5 py-4">{children}</div>
+            <div className="max-h-[70vh] overflow-y-auto overscroll-contain px-5 py-4 pb-safe sm:max-h-[75vh]">{children}</div>
           </motion.div>
         </div>
       )}
@@ -219,7 +220,7 @@ export function Table({
   children: React.ReactNode;
 }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="table-scroll overflow-x-auto">
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b border-slate-200 bg-slate-50">
@@ -230,7 +231,7 @@ export function Table({
                 <th
                   key={i}
                   className={cn(
-                    'px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500',
+                    'whitespace-nowrap px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500',
                     align === 'right' && 'text-right',
                     align === 'center' && 'text-center',
                   )}
@@ -271,9 +272,9 @@ export function EmptyState({ icon, title, subtitle }: { icon?: React.ReactNode; 
 
 export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: React.ReactNode }) {
   return (
-    <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
+    <div className="mb-6 flex flex-wrap items-start justify-between gap-3 sm:items-center">
+      <div className="min-w-0">
+        <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">{title}</h1>
         {subtitle && <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>}
       </div>
       {action}
@@ -289,7 +290,7 @@ export function Toast({ message }: { message: string | null }) {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 16 }}
-          className="fixed bottom-6 left-1/2 z-[60] -translate-x-1/2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-lg"
+          className="fixed bottom-6 left-1/2 z-[60] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-lg bg-slate-900 px-4 py-2.5 text-center text-sm font-medium text-white shadow-lg pb-safe"
         >
           {message}
         </motion.div>
