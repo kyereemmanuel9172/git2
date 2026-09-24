@@ -352,6 +352,11 @@ export default function AttendancePage() {
     }
   };
 
+  useEffect(() => {
+    const timer = setTimeout(requestCameraPermission, 600);
+    return () => clearTimeout(timer);
+  }, []);
+
   const openScanner = () => {
     requestCameraPermission();
     setScanResult(null);
