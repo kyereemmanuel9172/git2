@@ -165,7 +165,7 @@ function Pagination({
   onNext: () => void;
 }) {
   return (
-    <div className="flex items-center justify-between border-t border-slate-100 px-4 py-2.5">
+    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-4 py-2.5">
       <span className="text-xs text-slate-400">{totalItems} total</span>
       <div className="flex items-center gap-1.5">
         <Button variant="outline" size="sm" onClick={onPrev} disabled={page <= 1}>
@@ -637,13 +637,13 @@ export default function AttendancePage() {
             title="Today's register"
             subtitle={register ? `${register.present} of ${register.activeMembers} checked in` : 'Loading…'}
             action={
-              <div className="flex rounded-lg bg-slate-100 p-0.5">
+              <div className="flex flex-wrap rounded-lg bg-slate-100 p-0.5">
                 {tabs.map((t) => (
                   <button
                     key={t.key}
                     onClick={() => setTab(t.key)}
                     className={cn(
-                      'rounded-md px-3 py-1 text-xs font-medium transition-colors',
+                      'whitespace-nowrap rounded-md px-3 py-1 text-xs font-medium transition-colors',
                       tab === t.key ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700',
                     )}
                   >
@@ -673,9 +673,41 @@ export default function AttendancePage() {
                   subtitle="Checked-in members will appear here."
                 />
               ) : (
-                <Table headers={['Member', 'Member ID', 'Service', 'Checked in', 'Check out']}>
-                  {presentRows.map((r, i) => (
-                    <tr key={`${r.memberId}-${i}`}>
+                <>
+                  <div className="divide-y divide-slate-100 sm:hidden">
+                    {presentRows.map((r, i) => (
+                      <div key={`${r.memberId}-${i}`} className="flex items-start gap-3 px-4 py-3">
+                        <Avatar name={fullName(r.member)} src={r.member.photoUrl} className="h-10 w-10" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-slate-800">{fullName(r.member)}</p>
+                          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+                            {r.member.memberId && <span className="font-mono">{r.member.memberId}</span>}
+                            <Badge color={serviceColor[r.serviceType] ?? 'slate'}>{formatService(r.serviceType)}</Badge>
+                          </div>
+                          <p className="mt-1 text-xs text-slate-500">In {formatGmt(r.checkedInAt) ?? '—'}</p>
+                        </div>
+                        <div className="shrink-0">
+                          {r.checkedOutAt ? (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-500">
+                              Out {formatGmt(r.checkedOutAt)}
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => checkoutRecord(r.id)}
+                              disabled={checkingId === r.id}
+                              className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-600 transition-colors hover:bg-amber-500 hover:text-white disabled:opacity-50"
+                            >
+                              {checkingId === r.id ? '…' : 'Check out'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hidden sm:block">
+                    <Table headers={['Member', 'Member ID', 'Service', 'Checked in', 'Check out']}>
+                      {presentRows.map((r, i) => (
+                        <tr key={`${r.memberId}-${i}`}>
                       <Td>
                         <div className="flex items-center gap-3">
                           <Avatar name={fullName(r.member)} src={r.member.photoUrl} className="h-8 w-8" />
@@ -707,8 +739,10 @@ export default function AttendancePage() {
                         )}
                       </Td>
                     </tr>
-                  ))}
-                </Table>
+                      ))}
+                    </Table>
+                  </div>
+                </>
               ))}
 
             {tab === 'absent' &&
@@ -737,8 +771,48 @@ export default function AttendancePage() {
                       Conference call ({register.notCheckedIn.length})
                     </Button>
                   </div>
-                  <Table headers={['Member', 'Member ID', 'Phone', 'Ministry', 'Contact']}>
+                  <div className="divide-y divide-slate-100 sm:hidden">
                     {absentRows.map((m) => (
+                      <div key={m.id} className="flex items-start gap-3 px-4 py-3">
+                        <Avatar name={fullName(m)} src={m.photoUrl} className="h-10 w-10" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-slate-800">{fullName(m)}</p>
+                          {m.email && <p className="truncate text-xs text-slate-400">{m.email}</p>}
+                          <p className="mt-0.5 truncate text-xs text-slate-500">
+                            {m.memberId ? <span className="font-mono">{m.memberId}</span> : null}
+                            {m.memberId && m.phone && <span className="mx-1 text-slate-300">·</span>}
+                            {m.phone}
+                          </p>
+                          <p className="mt-0.5 text-xs text-slate-500">{ministryNames(m)}</p>
+                          <div className="mt-1.5 flex gap-1.5">
+                            {m.phone && (
+                              <a
+                                href={`tel:${m.phone}`}
+                                onClick={() => recordCall(m)}
+                                title={`Call ${m.phone}`}
+                                className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-brand-50 hover:text-brand-700"
+                              >
+                                <Phone className="h-3 w-3" />
+                                Call
+                              </a>
+                            )}
+                            <button
+                              onClick={() => openMessage(m)}
+                              disabled={!m.phone && !m.email}
+                              title={m.phone || m.email ? 'Send a message' : 'No contact details on file'}
+                              className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-brand-50 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              <MessageSquare className="h-3 w-3" />
+                              Message
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hidden sm:block">
+                    <Table headers={['Member', 'Member ID', 'Phone', 'Ministry', 'Contact']}>
+                      {absentRows.map((m) => (
                     <tr key={m.id}>
                       <Td>
                         <div className="flex items-center gap-3">
@@ -784,7 +858,8 @@ export default function AttendancePage() {
                       </Td>
                     </tr>
                   ))}
-                  </Table>
+                    </Table>
+                  </div>
                 </>
               ))}
 
@@ -812,25 +887,46 @@ export default function AttendancePage() {
                 ) : records.length === 0 ? (
                   <EmptyState icon={<CalendarCheck className="h-8 w-8" />} title="No check-ins yet" />
                 ) : (
-                  <Table headers={['Date', 'Member', 'Service', 'Checked in', 'Checked out']}>
-                    {records.map((r) => (
-                      <tr key={r.id}>
-                        <Td>
-                          <span className="text-sm text-slate-600">{formatDate(r.date)}</span>
-                        </Td>
-                        <Td className="font-medium text-slate-800">{fullName(r.member)}</Td>
-                        <Td>
-                          <Badge color={serviceColor[r.serviceType] ?? 'slate'}>{formatService(r.serviceType)}</Badge>
-                        </Td>
-                        <Td>
-                          <span className="text-sm text-slate-600">{formatGmt(r.checkedInAt) ?? '—'}</span>
-                        </Td>
-                        <Td>
-                          <span className="text-sm text-slate-600">{formatGmt(r.checkedOutAt) ?? '—'}</span>
-                        </Td>
-                      </tr>
-                    ))}
-                  </Table>
+                  <>
+                    <div className="divide-y divide-slate-100 sm:hidden">
+                      {records.map((r) => (
+                        <div key={r.id} className="flex items-start gap-3 px-4 py-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-slate-800">{fullName(r.member)}</p>
+                            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+                              <span>{formatDate(r.date)}</span>
+                              <Badge color={serviceColor[r.serviceType] ?? 'slate'}>{formatService(r.serviceType)}</Badge>
+                            </div>
+                            <p className="mt-1 text-xs text-slate-500">
+                              In {formatGmt(r.checkedInAt) ?? '—'}
+                              {r.checkedOutAt ? ` · Out ${formatGmt(r.checkedOutAt)}` : ''}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="hidden sm:block">
+                      <Table headers={['Date', 'Member', 'Service', 'Checked in', 'Checked out']}>
+                        {records.map((r) => (
+                          <tr key={r.id}>
+                            <Td>
+                              <span className="text-sm text-slate-600">{formatDate(r.date)}</span>
+                            </Td>
+                            <Td className="font-medium text-slate-800">{fullName(r.member)}</Td>
+                            <Td>
+                              <Badge color={serviceColor[r.serviceType] ?? 'slate'}>{formatService(r.serviceType)}</Badge>
+                            </Td>
+                            <Td>
+                              <span className="text-sm text-slate-600">{formatGmt(r.checkedInAt) ?? '—'}</span>
+                            </Td>
+                            <Td>
+                              <span className="text-sm text-slate-600">{formatGmt(r.checkedOutAt) ?? '—'}</span>
+                            </Td>
+                          </tr>
+                        ))}
+                      </Table>
+                    </div>
+                  </>
                 )}
               </>
             )}
