@@ -334,21 +334,26 @@ export default function AttendancePage() {
     }
   };
 
-  const warmUpCamera = async () => {
+  const requestCameraPermission = async () => {
     try {
       if (!navigator.mediaDevices?.getUserMedia) return;
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
-        audio: false,
-      });
-      stream.getTracks().forEach((t) => t.stop());
+      let stream: MediaStream | null = null;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' },
+          audio: false,
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      }
+      stream?.getTracks().forEach((t) => t.stop());
     } catch {
-      // permission not granted yet; the in-modal scanner will surface the error UI
+      // permission not granted; the in-modal scanner will surface the error UI
     }
   };
 
   const openScanner = () => {
-    warmUpCamera();
+    requestCameraPermission();
     setScanResult(null);
     setScanResolving(false);
     setScanError(null);

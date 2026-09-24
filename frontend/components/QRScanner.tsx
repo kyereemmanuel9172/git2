@@ -104,12 +104,16 @@ export function QRScanner({
 
       if (!started && activeRef.current) {
         try {
-          await scanner.start(
-            { facingMode: 'environment' },
-            config,
-            onSuccess,
-            onFail,
-          );
+          await scanner.start({ facingMode: 'environment' }, config, onSuccess, onFail);
+          started = true;
+        } catch {
+          if (!activeRef.current) return;
+        }
+      }
+
+      if (!started && activeRef.current) {
+        try {
+          await scanner.start({}, config, onSuccess, onFail);
           started = true;
         } catch {
           if (!activeRef.current) return;
