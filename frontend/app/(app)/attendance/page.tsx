@@ -334,7 +334,21 @@ export default function AttendancePage() {
     }
   };
 
+  const warmUpCamera = async () => {
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) return;
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' },
+        audio: false,
+      });
+      stream.getTracks().forEach((t) => t.stop());
+    } catch {
+      // permission not granted yet; the in-modal scanner will surface the error UI
+    }
+  };
+
   const openScanner = () => {
+    warmUpCamera();
     setScanResult(null);
     setScanResolving(false);
     setScanError(null);

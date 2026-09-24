@@ -103,6 +103,20 @@ export function QRScanner({
       }
 
       if (!started && activeRef.current) {
+        try {
+          await scanner.start(
+            { facingMode: 'environment' },
+            config,
+            onSuccess,
+            onFail,
+          );
+          started = true;
+        } catch {
+          if (!activeRef.current) return;
+        }
+      }
+
+      if (!started && activeRef.current) {
         throw new Error('Could not start camera');
       }
     } catch (e) {
