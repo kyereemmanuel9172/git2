@@ -97,16 +97,16 @@ export default function PortalAnnouncements() {
                 {/* Top accent bar */}
                 <div className={cn('h-1', isNew ? 'bg-gradient-to-r from-brand-500 to-indigo-500' : 'bg-slate-100')} />
 
-                <div className="p-5">
+                <div className="p-4 sm:p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         {isNew && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-bold text-brand-700">
                             <Sparkles className="h-2.5 w-2.5" /> NEW
                           </span>
                         )}
-                        <h3 className="text-base font-semibold text-slate-800">{a.title}</h3>
+                        <h3 className="text-[15px] font-semibold leading-snug text-slate-800 sm:text-base">{a.title}</h3>
                       </div>
                       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                         {a.publishedAt && (
@@ -124,7 +124,7 @@ export default function PortalAnnouncements() {
                     </div>
                   </div>
 
-                  <div className="mt-4 rounded-lg bg-slate-50/80 p-4">
+                  <div className="mt-3 rounded-lg bg-slate-50/80 p-3.5 sm:p-4">
                     <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{a.content}</p>
                   </div>
                 </div>
