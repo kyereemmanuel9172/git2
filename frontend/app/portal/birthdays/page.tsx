@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Cake, Gift, PartyPopper, Calendar, Star, Clock4 } from 'lucide-react';
 import { portalApi, formatDate } from '@/lib/portal';
 import { Card, CardBody, Spinner, EmptyState, Badge, cn } from '@/components/ui';
@@ -80,6 +80,26 @@ export default function PortalBirthdays() {
     if (daysUntil <= 7) return `In ${daysUntil} days`;
     return `${daysUntil} days`;
   };
+
+  const SectionHeader = ({
+    icon,
+    title,
+    count,
+    chipClass,
+    pillClass,
+  }: {
+    icon: ReactNode;
+    title: string;
+    count: number;
+    chipClass: string;
+    pillClass: string;
+  }) => (
+    <div className="mb-3 flex items-center gap-2.5">
+      <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', chipClass)}>{icon}</div>
+      <h2 className="min-w-0 flex-1 truncate text-base font-bold text-slate-900 sm:text-lg">{title}</h2>
+      <span className={cn('ml-auto shrink-0 rounded-full px-2.5 py-1 text-xs font-bold', pillClass)}>{count}</span>
+    </div>
+  );
 
   const BirthdayCard = ({ member, highlighted = false }: { member: BirthdayMember; highlighted?: boolean }) => (
     <div
@@ -206,16 +226,14 @@ export default function PortalBirthdays() {
       {/* Today's birthdays */}
       {data.today.length > 0 && (
         <div>
-          <div className="mb-3 flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
-              <PartyPopper className="h-4 w-4" />
-            </div>
-            <h2 className="text-lg font-bold text-slate-900">Today's Birthdays</h2>
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">
-              {data.today.length}
-            </span>
-          </div>
-          <div className="space-y-3">
+          <SectionHeader
+            icon={<PartyPopper className="h-4 w-4" />}
+            title="Today's Birthdays"
+            count={data.today.length}
+            chipClass="bg-amber-100 text-amber-600"
+            pillClass="bg-amber-100 text-amber-700"
+          />
+          <div className="space-y-2.5 sm:space-y-3">
             {data.today.map((m) => (
               <BirthdayCard key={m.id} member={m} highlighted />
             ))}
@@ -226,16 +244,14 @@ export default function PortalBirthdays() {
       {/* This week */}
       {data.thisWeek.length > 0 && (
         <div>
-          <div className="mb-3 flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-100 text-sky-600">
-              <Clock4 className="h-4 w-4" />
-            </div>
-            <h2 className="text-lg font-bold text-slate-900">This Week</h2>
-            <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-bold text-sky-700">
-              {data.thisWeek.length}
-            </span>
-          </div>
-          <div className="space-y-3">
+          <SectionHeader
+            icon={<Clock4 className="h-4 w-4" />}
+            title="This Week"
+            count={data.thisWeek.length}
+            chipClass="bg-sky-100 text-sky-600"
+            pillClass="bg-sky-100 text-sky-700"
+          />
+          <div className="space-y-2.5 sm:space-y-3">
             {data.thisWeek.map((m) => (
               <BirthdayCard key={m.id} member={m} />
             ))}
@@ -246,16 +262,14 @@ export default function PortalBirthdays() {
       {/* Later */}
       {data.later.length > 0 && (
         <div>
-          <div className="mb-3 flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
-              <Calendar className="h-4 w-4" />
-            </div>
-            <h2 className="text-lg font-bold text-slate-900">Coming Up</h2>
-            <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-bold text-violet-700">
-              {data.later.length}
-            </span>
-          </div>
-          <div className="space-y-3">
+          <SectionHeader
+            icon={<Calendar className="h-4 w-4" />}
+            title="Coming Up"
+            count={data.later.length}
+            chipClass="bg-violet-100 text-violet-600"
+            pillClass="bg-violet-100 text-violet-700"
+          />
+          <div className="space-y-2.5 sm:space-y-3">
             {data.later.map((m) => (
               <BirthdayCard key={m.id} member={m} />
             ))}
