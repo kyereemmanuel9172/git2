@@ -84,23 +84,23 @@ export default function PortalBirthdays() {
   const BirthdayCard = ({ member, highlighted = false }: { member: BirthdayMember; highlighted?: boolean }) => (
     <div
       className={cn(
-        'group flex items-center gap-4 rounded-xl border p-4 transition-all',
+        'group flex items-center gap-3 rounded-xl border p-3.5 transition-all sm:gap-4 sm:p-4',
         highlighted
           ? 'border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 shadow-sm'
           : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm',
       )}
     >
-      <div className="relative">
+      <div className="relative shrink-0">
         {member.photoUrl ? (
           <img
             src={member.photoUrl}
             alt={`${member.firstName} ${member.lastName}`}
-            className="h-14 w-14 rounded-full object-cover shadow-sm"
+            className="h-12 w-12 rounded-full object-cover shadow-sm sm:h-14 sm:w-14"
           />
         ) : (
           <div
             className={cn(
-              'flex h-14 w-14 items-center justify-center rounded-full text-lg font-bold shadow-sm',
+              'flex h-12 w-12 items-center justify-center rounded-full text-base font-bold shadow-sm sm:h-14 sm:w-14 sm:text-lg',
               getAvatarColor(member.id),
             )}
           >
@@ -108,8 +108,8 @@ export default function PortalBirthdays() {
           </div>
         )}
         {member.isToday && (
-          <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-white shadow-sm">
-            <Gift className="h-3 w-3" />
+          <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-white shadow-sm sm:h-6 sm:w-6">
+            <Gift className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
           </div>
         )}
       </div>
@@ -137,7 +137,7 @@ export default function PortalBirthdays() {
         </div>
       </div>
 
-      <div className="text-right">
+      <div className="shrink-0 text-right">
         <Badge color={member.isToday ? 'amber' : member.daysUntil <= 7 ? 'blue' : 'slate'}>
           {getDaysLabel(member.daysUntil)}
         </Badge>
@@ -154,16 +154,16 @@ export default function PortalBirthdays() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-pink-500 via-rose-500 to-amber-500 p-6 sm:p-8 text-white shadow-xl shadow-rose-500/20">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-pink-500 via-rose-500 to-amber-500 p-5 sm:p-8 text-white shadow-xl shadow-rose-500/20">
         <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10" />
         <div className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-white/10" />
         <div className="relative">
           <div className="flex items-center gap-3">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20">
-              <Cake className="h-7 w-7" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 sm:h-14 sm:w-14 sm:rounded-2xl">
+              <Cake className="h-6 w-6 sm:h-7 sm:w-7" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold sm:text-3xl">Church Birthdays</h1>
+              <h1 className="text-xl font-bold sm:text-3xl">Church Birthdays</h1>
               <p className="mt-0.5 text-sm text-white/80">
                 {data.total} member{data.total !== 1 ? 's' : ''} with upcoming birthdays
               </p>
@@ -173,31 +173,31 @@ export default function PortalBirthdays() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
-            <PartyPopper className="h-5 w-5" />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600 sm:h-10 sm:w-10">
+            <PartyPopper className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-slate-900">{data.today.length}</p>
+            <p className="text-xl font-bold text-slate-900 sm:text-2xl">{data.today.length}</p>
             <p className="text-xs text-slate-500">Today</p>
           </div>
         </div>
-        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
-            <Clock4 className="h-5 w-5" />
+        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-600 sm:h-10 sm:w-10">
+            <Clock4 className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-slate-900">{data.thisWeek.length}</p>
+            <p className="text-xl font-bold text-slate-900 sm:text-2xl">{data.thisWeek.length}</p>
             <p className="text-xs text-slate-500">This week</p>
           </div>
         </div>
-        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
-            <Calendar className="h-5 w-5" />
+        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600 sm:h-10 sm:w-10">
+            <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-slate-900">{data.later.length}</p>
+            <p className="text-xl font-bold text-slate-900 sm:text-2xl">{data.later.length}</p>
             <p className="text-xs text-slate-500">Later</p>
           </div>
         </div>
