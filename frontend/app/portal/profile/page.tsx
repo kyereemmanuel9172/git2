@@ -36,7 +36,7 @@ function InfoCard({ items }: { items: InfoItem[] }) {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{item.label}</p>
-            <p className="mt-0.5 truncate text-sm font-medium text-slate-800">{item.value ?? '—'}</p>
+            <p className="mt-0.5 break-words text-sm font-medium text-slate-800">{item.value ?? '—'}</p>
           </div>
         </div>
       ))}
@@ -112,17 +112,17 @@ export default function PortalProfile() {
   };
 
   const personalInfo: InfoItem[] = [
-    { icon: <Mail className="h-4.5 w-4.5" />, label: 'Email', value: member.email, iconColor: 'text-blue-500' },
-    { icon: <Phone className="h-4.5 w-4.5" />, label: 'Phone', value: member.phone, iconColor: 'text-emerald-500' },
-    { icon: <MapPin className="h-4.5 w-4.5" />, label: 'Location', value: [member.city, member.address].filter(Boolean).join(', '), iconColor: 'text-rose-500' },
-    { icon: <Users className="h-4.5 w-4.5" />, label: 'Church Group', value: member.family?.name, iconColor: 'text-violet-500' },
+    { icon: <Mail className="h-5 w-5" />, label: 'Email', value: member.email, iconColor: 'text-blue-500' },
+    { icon: <Phone className="h-5 w-5" />, label: 'Phone', value: member.phone, iconColor: 'text-emerald-500' },
+    { icon: <MapPin className="h-5 w-5" />, label: 'Location', value: [member.city, member.address].filter(Boolean).join(', '), iconColor: 'text-rose-500' },
+    { icon: <Users className="h-5 w-5" />, label: 'Church Group', value: member.family?.name, iconColor: 'text-violet-500' },
   ];
 
   const membershipInfo: InfoItem[] = [
-    { icon: <Calendar className="h-4.5 w-4.5" />, label: 'Member since', value: member.joinDate ? formatDate(member.joinDate) : undefined, iconColor: 'text-sky-500' },
-    { icon: <Briefcase className="h-4.5 w-4.5" />, label: 'Occupation', value: member.occupation, iconColor: 'text-amber-500' },
-    { icon: <HeartHandshake className="h-4.5 w-4.5" />, label: 'Marital status', value: member.maritalStatus ? titleCase(member.maritalStatus) : undefined, iconColor: 'text-pink-500' },
-    { icon: <BadgeCheck className="h-4.5 w-4.5" />, label: 'Baptism date', value: member.baptismDate ? formatDate(member.baptismDate) : undefined, iconColor: 'text-indigo-500' },
+    { icon: <Calendar className="h-5 w-5" />, label: 'Member since', value: member.joinDate ? formatDate(member.joinDate) : undefined, iconColor: 'text-sky-500' },
+    { icon: <Briefcase className="h-5 w-5" />, label: 'Occupation', value: member.occupation, iconColor: 'text-amber-500' },
+    { icon: <HeartHandshake className="h-5 w-5" />, label: 'Marital status', value: member.maritalStatus ? titleCase(member.maritalStatus) : undefined, iconColor: 'text-pink-500' },
+    { icon: <BadgeCheck className="h-5 w-5" />, label: 'Baptism date', value: member.baptismDate ? formatDate(member.baptismDate) : undefined, iconColor: 'text-indigo-500' },
   ];
 
   return (
@@ -197,7 +197,7 @@ export default function PortalProfile() {
                       className="flex items-center gap-3 rounded-xl border border-slate-100 p-3 transition-colors hover:bg-slate-50/50"
                     >
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
-                        <Users className="h-4.5 w-4.5" />
+                        <Users className="h-5 w-5" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-slate-800">{link.department?.name ?? 'Department'}</p>
@@ -267,7 +267,7 @@ export default function PortalProfile() {
                     onChange={(e) => setForm({ ...form, occupation: e.target.value })}
                   />
                 </div>
-                <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
+                <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
                   <Button type="button" variant="ghost" onClick={() => member && setForm({
                     email: member.email ?? '',
                     phone: member.phone ?? '',
@@ -275,10 +275,10 @@ export default function PortalProfile() {
                     city: member.city ?? '',
                     maritalStatus: member.maritalStatus ?? '',
                     occupation: member.occupation ?? '',
-                  })}>
+                  })} className="w-full sm:w-auto">
                     Reset
                   </Button>
-                  <Button type="submit" disabled={saving}>
+                  <Button type="submit" disabled={saving} className="w-full sm:w-auto">
                     <Save className="h-4 w-4" />
                     {saving ? 'Saving…' : 'Save changes'}
                   </Button>
@@ -319,8 +319,8 @@ export default function PortalProfile() {
                     onChange={(e) => setPw({ ...pw, newPassword: e.target.value })}
                   />
                 </div>
-                <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
-                  <Button type="submit" disabled={savingPw}>
+                <div className="flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
+                  <Button type="submit" disabled={savingPw} className="w-full sm:w-auto">
                     <KeyRound className="h-4 w-4" />
                     {savingPw ? 'Updating…' : 'Update password'}
                   </Button>
