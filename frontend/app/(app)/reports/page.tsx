@@ -84,6 +84,20 @@ const TABS: Array<{ id: Tab; label: string; icon: ReactNode }> = [
   { id: 'events', label: 'Events', icon: <CalendarDays className="h-4 w-4" /> },
 ];
 
+const isoDay = (d: Date) => d.toISOString().slice(0, 10);
+const todayIso = () => isoDay(new Date());
+const daysAgoIso = (n: number) => isoDay(new Date(Date.now() - n * 86400000));
+const monthStartIso = () => {
+  const d = new Date();
+  return isoDay(new Date(d.getFullYear(), d.getMonth(), 1));
+};
+
+const DATE_PRESETS: Array<{ key: string; label: string; from: () => string; to: () => string }> = [
+  { key: '7d', label: 'Last 7 days', from: () => daysAgoIso(7), to: todayIso },
+  { key: '30d', label: 'Last 30 days', from: () => daysAgoIso(30), to: todayIso },
+  { key: 'month', label: 'This month', from: monthStartIso, to: todayIso },
+];
+
 function BarList({ data }: { data: Array<{ name: string; value: number }> }) {
   if (data.length === 0) return <EmptyState title="No data" />;
   const max = Math.max(1, ...data.map((d) => d.value));
@@ -115,6 +129,8 @@ export default function ReportsPage() {
   const [attTo, setAttTo] = useState('');
   const [finFrom, setFinFrom] = useState('');
   const [finTo, setFinTo] = useState('');
+  const [attPreset, setAttPreset] = useState('');
+  const [finPreset, setFinPreset] = useState('');
   const [loadingAttendance, setLoadingAttendance] = useState(false);
   const [loadingFinance, setLoadingFinance] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -136,12 +152,14 @@ export default function ReportsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const loadAttendance = async () => {
+  const loadAttendance = async (range?: { from?: string; to?: string }) => {
     setLoadingAttendance(true);
     try {
       const params = new URLSearchParams();
-      if (attFrom) params.set('from', attFrom);
-      if (attTo) params.set('to', attTo);
+      const from = range?.from ?? attFrom;
+      const to = range?.to ?? attTo;
+      if (from) params.set('from', from);
+      if (to) params.set('to', to);
       const qs = params.toString();
       const res = await api<AttendanceReport>(`/reports/attendance${qs ? `?${qs}` : ''}`);
       setAttendance(res);
@@ -152,12 +170,14 @@ export default function ReportsPage() {
     }
   };
 
-  const loadFinance = async () => {
+  const loadFinance = async (range?: { from?: string; to?: string }) => {
     setLoadingFinance(true);
     try {
       const params = new URLSearchParams();
-      if (finFrom) params.set('from', finFrom);
-      if (finTo) params.set('to', finTo);
+      const from = range?.from ?? finFrom;
+      const to = range?.to ?? finTo;
+      if (from) params.set('from', from);
+      if (to) params.set('to', to);
       const qs = params.toString();
       const res = await api<FinanceReport>(`/reports/finance${qs ? `?${qs}` : ''}`);
       setFinance(res);
@@ -166,6 +186,24 @@ export default function ReportsPage() {
     } finally {
       setLoadingFinance(false);
     }
+  };
+
+  const applyAttPreset = async (key: string) => {
+    const p = DATE_PRESETS.find((x) => x.key === key);
+    if (!p) return;
+    setAttPreset(key);
+    setAttFrom(p.from());
+    setAttTo(p.to());
+    await loadAttendance({ from: p.from(), to: p.to() });
+  };
+
+  const applyFinPreset = async (key: string) => {
+    const p = DATE_PRESETS.find((x) => x.key === key);
+    if (!p) return;
+    setFinPreset(key);
+    setFinFrom(p.from());
+    setFinTo(p.to());
+    await loadFinance({ from: p.from(), to: p.to() });
   };
 
   const attendanceByDay = attendance ? Object.entries(attendance.byDay).map(([date, value]) => ({ date, value })) : [];
@@ -254,28 +292,58 @@ export default function ReportsPage() {
       {tab === 'attendance' && (
         <div className="space-y-6">
           <Card>
-            <CardBody className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="w-full sm:w-44">
-                <label className="mb-1 block text-xs font-medium text-slate-600">From</label>
-                <input
-                  type="date"
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-                  value={attFrom}
-                  onChange={(e) => setAttFrom(e.target.value)}
-                />
+            <CardBody>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-medium text-slate-700">Date range</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {DATE_PRESETS.map((p) => (
+                    <button
+                      key={p.key}
+                      onClick={() => applyAttPreset(p.key)}
+                      className={cn(
+                        'rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                        attPreset === p.key
+                          ? 'bg-brand-600 text-white shadow-sm'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900',
+                      )}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+                <span className="hidden text-xs text-slate-400 sm:inline">or pick a custom range</span>
               </div>
-              <div className="w-full sm:w-44">
-                <label className="mb-1 block text-xs font-medium text-slate-600">To</label>
-                <input
-                  type="date"
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-                  value={attTo}
-                  onChange={(e) => setAttTo(e.target.value)}
-                />
+              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
+                <div className="grid flex-1 grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">From</label>
+                    <input
+                      type="date"
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                      value={attFrom}
+                      onChange={(e) => {
+                        setAttPreset('');
+                        setAttFrom(e.target.value);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">To</label>
+                    <input
+                      type="date"
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                      value={attTo}
+                      onChange={(e) => {
+                        setAttPreset('');
+                        setAttTo(e.target.value);
+                      }}
+                    />
+                  </div>
+                </div>
+                <Button onClick={() => loadAttendance()} disabled={loadingAttendance} className="w-full sm:w-auto">
+                  {loadingAttendance ? 'Loading...' : 'Apply filter'}
+                </Button>
               </div>
-              <Button onClick={loadAttendance} disabled={loadingAttendance}>
-                {loadingAttendance ? 'Loading...' : 'Load'}
-              </Button>
             </CardBody>
           </Card>
           {attendance && (
@@ -323,28 +391,58 @@ export default function ReportsPage() {
       {tab === 'finance' && (
         <div className="space-y-6">
           <Card>
-            <CardBody className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="w-full sm:w-44">
-                <label className="mb-1 block text-xs font-medium text-slate-600">From</label>
-                <input
-                  type="date"
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-                  value={finFrom}
-                  onChange={(e) => setFinFrom(e.target.value)}
-                />
+            <CardBody>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-medium text-slate-700">Date range</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {DATE_PRESETS.map((p) => (
+                    <button
+                      key={p.key}
+                      onClick={() => applyFinPreset(p.key)}
+                      className={cn(
+                        'rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                        finPreset === p.key
+                          ? 'bg-brand-600 text-white shadow-sm'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900',
+                      )}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+                <span className="hidden text-xs text-slate-400 sm:inline">or pick a custom range</span>
               </div>
-              <div className="w-full sm:w-44">
-                <label className="mb-1 block text-xs font-medium text-slate-600">To</label>
-                <input
-                  type="date"
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-                  value={finTo}
-                  onChange={(e) => setFinTo(e.target.value)}
-                />
+              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
+                <div className="grid flex-1 grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">From</label>
+                    <input
+                      type="date"
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                      value={finFrom}
+                      onChange={(e) => {
+                        setFinPreset('');
+                        setFinFrom(e.target.value);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">To</label>
+                    <input
+                      type="date"
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                      value={finTo}
+                      onChange={(e) => {
+                        setFinPreset('');
+                        setFinTo(e.target.value);
+                      }}
+                    />
+                  </div>
+                </div>
+                <Button onClick={() => loadFinance()} disabled={loadingFinance} className="w-full sm:w-auto">
+                  {loadingFinance ? 'Loading...' : 'Apply filter'}
+                </Button>
               </div>
-              <Button onClick={loadFinance} disabled={loadingFinance}>
-                {loadingFinance ? 'Loading...' : 'Load'}
-              </Button>
             </CardBody>
           </Card>
           {finance && (
