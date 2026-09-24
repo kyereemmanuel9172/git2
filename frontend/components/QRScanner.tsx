@@ -204,24 +204,31 @@ export function QRScanner({
 
   return (
     <div className="space-y-3">
-      <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-900">
-        <div ref={regionRef} id="qr-scan-region" className="relative flex h-72 w-full items-center justify-center" />
-        <p className="absolute bottom-2 left-0 right-0 z-10 flex items-center justify-center gap-1.5 text-center text-xs text-white/80">
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-900 shadow-inner">
+        <div ref={regionRef} id="qr-scan-region" className="relative flex h-64 w-full items-center justify-center sm:h-72" />
+        <div className="pointer-events-none absolute inset-0 z-10">
+          <div className="absolute left-4 right-4 top-3 bottom-8">
+            <div className="absolute left-0 top-0 h-7 w-7 rounded-tl-2xl border-l-2 border-t-2 border-white/70" />
+            <div className="absolute right-0 top-0 h-7 w-7 rounded-tr-2xl border-r-2 border-t-2 border-white/70" />
+            <div className="absolute bottom-0 left-0 h-7 w-7 rounded-bl-2xl border-b-2 border-l-2 border-white/70" />
+            <div className="absolute bottom-0 right-0 h-7 w-7 rounded-br-2xl border-b-2 border-r-2 border-white/70" />
+            <div className="qr-scan-sweep absolute left-2 right-2 h-[2px] rounded-full bg-brand-400" />
+          </div>
+        </div>
+        <p className="pointer-events-none absolute bottom-2 left-0 right-0 z-10 flex items-center justify-center gap-1.5 px-3 text-center text-xs text-white/85">
           <ScanLine className="h-3.5 w-3.5" />
           Point the camera at a member QR code
         </p>
       </div>
-      <div className="flex items-center justify-center gap-2">
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          disabled={busy}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
-        >
-          <Upload className="h-3.5 w-3.5" />
-          {busy ? 'Scanning\u2026' : 'Upload a QR image'}
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={() => fileRef.current?.click()}
+        disabled={busy}
+        className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 disabled:opacity-50 sm:w-auto sm:px-4"
+      >
+        <Upload className="h-3.5 w-3.5" />
+        {busy ? 'Scanning\u2026' : 'Upload a QR image instead'}
+      </button>
       <input
         ref={fileRef}
         type="file"

@@ -17,6 +17,9 @@ import {
   ScanLine,
   Printer,
   Download,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
 } from 'lucide-react';
 import { api, download, formatDate, titleCase } from '@/lib/api';
 import { motion } from 'framer-motion';
@@ -1117,50 +1120,55 @@ export default function AttendancePage() {
               <Avatar name={fullName(scanResult)} src={scanResult.photoUrl} className="h-14 w-14" />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-lg font-bold text-slate-900">{fullName(scanResult)}</p>
+                  <p className="break-words text-lg font-bold text-slate-900">{fullName(scanResult)}</p>
                   {scanResult.membershipStatus && (
                     <Badge color={statusColor(scanResult.membershipStatus)}>{titleCase(scanResult.membershipStatus)}</Badge>
                   )}
                 </div>
-                <p className="mt-0.5 text-xs text-slate-500">
+                <p className="mt-0.5 break-words text-xs text-slate-500">
                   {scanResult.memberId ? `Member ID: ${scanResult.memberId}` : 'No member ID'}
                 </p>
               </div>
             </div>
 
             {scanCheckinStatus === 'checking_in' && (
-              <div className="flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-800">
+              <div className="flex items-center gap-2.5 rounded-lg bg-blue-50 px-3 py-2.5 text-sm text-blue-800">
                 <Spinner /> Checking in…
               </div>
             )}
 
             {scanCheckinStatus === 'success' && (
-              <div className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
-                ✓ {scanCheckinMsg}
+              <div className="flex items-center gap-2.5 rounded-lg bg-emerald-50 px-3 py-2.5 text-sm font-medium text-emerald-800">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                {scanCheckinMsg}
               </div>
             )}
 
             {scanCheckinStatus === 'already' && (
-              <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
-                ⚠ {scanCheckinMsg}
+              <div className="flex items-center gap-2.5 rounded-lg bg-amber-50 px-3 py-2.5 text-sm font-medium text-amber-800">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                {scanCheckinMsg}
               </div>
             )}
 
             {scanCheckinStatus === 'error' && (
-              <div className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-800">
-                ✕ {scanCheckinMsg}
+              <div className="flex items-center gap-2.5 rounded-lg bg-red-50 px-3 py-2.5 text-sm font-medium text-red-800">
+                <XCircle className="h-4 w-4 shrink-0" />
+                {scanCheckinMsg}
               </div>
             )}
 
-            <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-4">
+            <div className="flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="flex items-center gap-1.5 text-xs text-slate-500">
+                <CalendarCheck className="h-3.5 w-3.5" />
                 {formatService(serviceType)} service
               </p>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={retryScan}>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Button onClick={retryScan} className="w-full sm:w-auto">
+                  <ScanLine className="h-4 w-4" />
                   Scan another
                 </Button>
-                <Button variant="outline" onClick={closeScanner}>
+                <Button variant="outline" onClick={closeScanner} className="w-full sm:w-auto">
                   Close
                 </Button>
               </div>
@@ -1173,12 +1181,11 @@ export default function AttendancePage() {
           </div>
         ) : scanError ? (
           <div className="flex flex-col items-center gap-3 py-8 text-center">
+            <XCircle className="h-8 w-8 text-red-400" />
             <p className="text-sm font-medium text-slate-700">Could not find this member</p>
-            <p className="max-w-xs text-xs text-slate-500">{scanError}</p>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={retryScan}>
-                Try again
-              </Button>
+            <p className="max-w-xs break-words text-xs text-slate-500">{scanError}</p>
+            <div className="flex w-full max-w-xs flex-col gap-2">
+              <Button onClick={retryScan}>Try again</Button>
               <Button variant="outline" onClick={closeScanner}>
                 Cancel
               </Button>

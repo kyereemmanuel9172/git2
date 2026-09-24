@@ -42,6 +42,32 @@ h4 {
   overscroll-behavior-x: contain;
 }
 
+/* Animated line inside the QR scanner viewport. */
+@keyframes qr-scan-sweep {
+  0% {
+    top: 4%;
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  50% {
+    top: 94%;
+  }
+  62% {
+    opacity: 1;
+  }
+  100% {
+    top: 4%;
+    opacity: 0;
+  }
+}
+
+.qr-scan-sweep {
+  animation: qr-scan-sweep 2.6s ease-in-out infinite;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.9);
+}
+
 /* Respect notches / home indicators on phones. */
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
