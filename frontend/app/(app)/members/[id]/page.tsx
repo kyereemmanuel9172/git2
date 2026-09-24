@@ -106,9 +106,9 @@ interface MemberDetail {
 
 function Field({ label, value }: { label: string; value?: string | number | null }) {
   return (
-    <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</dt>
-      <dd className="mt-0.5 text-sm text-slate-800">{value ?? '—'}</dd>
+    <div className="min-w-0 rounded-xl bg-slate-50/80 px-4 py-3 ring-1 ring-slate-100">
+      <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</dt>
+      <dd className="mt-1 break-words text-sm font-medium text-slate-800">{value ?? '—'}</dd>
     </div>
   );
 }
@@ -326,7 +326,7 @@ export default function MemberDetailPage() {
             />
             <CardBody>
               <div className="grid gap-3 sm:grid-cols-3">
-                <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-3">
+                <div className="flex items-center gap-3 rounded-xl bg-slate-50/80 p-3 ring-1 ring-slate-100">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-100 text-brand-600">
                     <Mail className="h-4 w-4" />
                   </div>
@@ -335,7 +335,7 @@ export default function MemberDetailPage() {
                     <p className="truncate text-sm font-medium text-slate-800">{member.email ?? '—'}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-3">
+                <div className="flex items-center gap-3 rounded-xl bg-slate-50/80 p-3 ring-1 ring-slate-100">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-100 text-brand-600">
                     <Phone className="h-4 w-4" />
                   </div>
@@ -344,7 +344,7 @@ export default function MemberDetailPage() {
                     <p className="truncate text-sm font-medium text-slate-800">{member.phone ?? '—'}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-3">
+                <div className="flex items-center gap-3 rounded-xl bg-slate-50/80 p-3 ring-1 ring-slate-100">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-100 text-brand-600">
                     <MapPin className="h-4 w-4" />
                   </div>
@@ -357,7 +357,7 @@ export default function MemberDetailPage() {
                 </div>
               </div>
 
-              <dl className="mt-5 grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+              <dl className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <Field label="Member ID" value={member.memberId} />
                 <Field label="Gender" value={titleCase(member.gender) || '—'} />
                 <Field label="Date of birth" value={formatDate(member.dateOfBirth)} />
