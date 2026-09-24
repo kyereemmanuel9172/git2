@@ -59,6 +59,29 @@ const roleColor = (role: string): Color => {
 
 const emptyForm = { name: '', email: '', password: '', role: 'MEMBER', phone: '' };
 
+const getInitials = (name: string) =>
+  name
+    .split(' ')
+    .map((p) => p[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+
+const avatarTone = (id: string) => {
+  const tones = [
+    'bg-indigo-100 text-indigo-700',
+    'bg-emerald-100 text-emerald-700',
+    'bg-amber-100 text-amber-700',
+    'bg-rose-100 text-rose-700',
+    'bg-sky-100 text-sky-700',
+    'bg-violet-100 text-violet-700',
+  ];
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  return tones[Math.abs(hash) % tones.length];
+};
+
 export default function UsersPage() {
   const { user } = useAuth();
   const { toast, message } = useToast();
@@ -208,7 +231,7 @@ export default function UsersPage() {
               onKeyDown={(e) => e.key === 'Enter' && load(1)}
             />
           </div>
-          <Button variant="outline" onClick={() => load(1)}>
+          <Button variant="outline" onClick={() => load(1)} className="w-full sm:w-auto">
             <Search className="h-4 w-4" />
             Search
           </Button>
@@ -221,7 +244,75 @@ export default function UsersPage() {
         ) : items.length === 0 ? (
           <EmptyState icon={<UserCog className="h-8 w-8" />} title="No users found" />
         ) : (
-          <Table headers={['Name', 'Email', 'Role', 'Phone', 'Active', 'Last login', 'Actions']}>
+          <>
+            {/* Mobile card list */}
+            <div className="divide-y divide-slate-100 sm:hidden">
+              {items.map((u) => (
+                <div key={u.id} className="flex items-start gap-3 px-4 py-3">
+                  <div
+                    className={cn(
+                      'flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold',
+                      avatarTone(u.id),
+                    )}
+                  >
+                    {getInitials(u.name)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-sm font-semibold text-slate-800">{u.name}</p>
+                      <Badge color={roleColor(u.role)}>{titleCase(u.role)}</Badge>
+                    </div>
+                    <p className="mt-0.5 truncate text-xs text-slate-500">{u.email}</p>
+                    <p className="mt-0.5 text-xs text-slate-400">
+                      {u.phone ?? '—'}
+                      <span className="mx-1 text-slate-300">·</span>
+                      Last login {formatDateTime(u.lastLoginAt)}
+                    </p>
+                    <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-2">
+                      <button
+                        onClick={() => toggleActive(u)}
+                        className="flex items-center gap-2 text-xs font-medium text-slate-600"
+                        title={u.isActive ? 'Deactivate user' : 'Activate user'}
+                      >
+                        <span
+                          className={cn(
+                            'relative h-4 w-7 rounded-full transition-colors',
+                            u.isActive ? 'bg-emerald-500' : 'bg-slate-300',
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              'absolute top-0.5 h-3 w-3 rounded-full bg-white shadow transition-all',
+                              u.isActive ? 'left-3.5' : 'left-0.5',
+                            )}
+                          />
+                        </span>
+                        {u.isActive ? 'Active' : 'Inactive'}
+                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => openEdit(u)}
+                          className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                          title="Edit user"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => removeUser(u)}
+                          className="rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                          title="Delete user"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop table */}
+            <div className="hidden sm:block">
+              <Table headers={['Name', 'Email', 'Role', 'Phone', 'Active', 'Last login', 'Actions']}>
             {items.map((u) => (
               <tr key={u.id}>
                 <Td className="font-medium text-slate-800">{u.name}</Td>
@@ -268,9 +359,11 @@ export default function UsersPage() {
                 </Td>
               </tr>
             ))}
-          </Table>
+              </Table>
+            </div>
+          </>
         )}
-        <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
+        <div className="flex flex-col gap-2 border-t border-slate-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <span className="text-xs text-slate-500">
             Showing {items.length} of {total}
           </span>
