@@ -343,11 +343,11 @@ export default function PrayerPage() {
 
       {/* Tabs */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1">
+        <div className="inline-flex w-full rounded-lg border border-slate-200 bg-white p-1 sm:w-auto">
           <button
             onClick={() => setTab('prayer')}
             className={cn(
-              'flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-medium transition-all',
+              'flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-all sm:flex-none sm:px-4',
               tab === 'prayer'
                 ? 'bg-brand-600 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
@@ -369,7 +369,7 @@ export default function PrayerPage() {
           <button
             onClick={() => setTab('counseling')}
             className={cn(
-              'flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-medium transition-all',
+              'flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-all sm:flex-none sm:px-4',
               tab === 'counseling'
                 ? 'bg-brand-600 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
@@ -391,7 +391,7 @@ export default function PrayerPage() {
         </div>
 
         {/* Search */}
-        <div className="relative min-w-0 flex-1 sm:max-w-xs">
+        <div className="relative min-w-0 w-full sm:w-auto sm:max-w-xs sm:flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
