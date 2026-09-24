@@ -99,7 +99,7 @@ export default function PortalEvents() {
         <>
           {/* Featured event (first one) */}
           {events.length > 0 && (
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-600 via-brand-700 to-indigo-800 p-6 sm:p-8 text-white shadow-xl shadow-brand-600/20">
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-600 via-brand-700 to-indigo-800 p-5 sm:p-8 text-white shadow-xl shadow-brand-600/20">
               <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/5" />
               <div className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-white/5" />
               <div className="relative">
@@ -109,7 +109,7 @@ export default function PortalEvents() {
                       <Sparkles className="h-4 w-4 text-white/80" />
                       <span className="text-xs font-semibold uppercase tracking-wide text-white/70">Featured Event</span>
                     </div>
-                    <h2 className="mt-2 text-2xl font-bold">{events[0].title}</h2>
+                    <h2 className="mt-2 text-xl font-bold leading-tight sm:text-2xl">{events[0].title}</h2>
                     <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-white/80">
                       <span className="inline-flex items-center gap-1.5">
                         <Calendar className="h-4 w-4" /> {formatDateTime(events[0].startDate)}
@@ -167,7 +167,7 @@ export default function PortalEvents() {
                             <Tag className="h-2.5 w-2.5" /> {titleCase(e.type)}
                           </span>
                         )}
-                        <h3 className="mt-1.5 text-lg font-bold">{e.title}</h3>
+                        <h3 className="mt-1.5 text-base font-bold leading-snug sm:text-lg">{e.title}</h3>
                       </div>
                       <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-white/20 text-center">
                         <span className="text-lg font-bold leading-none">{new Date(e.startDate).getDate()}</span>
@@ -220,8 +220,8 @@ export default function PortalEvents() {
                     )}
 
                     {/* Action */}
-                    <div className="mt-auto flex items-center justify-between gap-3 pt-4">
-                      <div className="flex items-center gap-2">
+                    <div className="mt-auto flex flex-col gap-3 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex flex-wrap items-center gap-2">
                         {e.registered ? (
                           <Badge color={statusColor(e.registrationStatus ?? '')}>
                             <Check className="mr-1 h-3 w-3" />
@@ -241,6 +241,7 @@ export default function PortalEvents() {
                         variant={e.registered ? 'outline' : 'primary'}
                         onClick={() => register(e.id)}
                         disabled={!e.registered && !!e.capacity && e.registrations >= e.capacity}
+                        className="w-full sm:w-auto"
                       >
                         {e.registered ? 'Registered' : e.capacity && e.registrations >= e.capacity ? 'Join waitlist' : 'Register'}
                       </Button>
