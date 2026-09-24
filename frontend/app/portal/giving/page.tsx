@@ -88,7 +88,7 @@ export default function PortalGiving() {
         </div>
         <button
           onClick={formatReceipt}
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 hover:shadow-md"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 hover:shadow-md sm:w-auto"
         >
           <Download className="h-4 w-4" />
           Download receipt
@@ -104,7 +104,7 @@ export default function PortalGiving() {
 
       {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 sm:max-w-xs">
+        <div className="relative min-w-0 w-full sm:w-auto sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
@@ -150,8 +150,37 @@ export default function PortalGiving() {
               }
             />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
+            <>
+              {/* Mobile card list */}
+              <div className="divide-y divide-slate-100 sm:hidden">
+                {filteredItems.map((item) => (
+                  <div key={`${item.source}-${item.id}`} className="px-4 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-800">{formatDate(item.date)}</p>
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                          <Badge color={statusColor(item.type)}>{titleCase(item.type)}</Badge>
+                          {item.category && <span className="text-xs text-slate-500">{item.category}</span>}
+                        </div>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="flex items-center justify-end gap-1 font-semibold text-emerald-700">
+                          <ArrowUpRight className="h-3.5 w-3.5 text-emerald-500" />
+                          {formatMoney(item.amount, item.currency)}
+                        </p>
+                      </div>
+                    </div>
+                    {(item.description || item.reference) && (
+                      <p className="mt-1.5 truncate text-xs text-slate-500">
+                        {item.description ?? `Ref: ${item.reference}`}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {/* Desktop table */}
+              <div className="hidden overflow-x-auto sm:block">
+                <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50/80">
                     <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Date</th>
@@ -188,7 +217,8 @@ export default function PortalGiving() {
                   ))}
                 </tbody>
               </table>
-            </div>
+              </div>
+            </>
           )}
         </CardBody>
       </Card>
