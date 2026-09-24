@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Search,
   Users,
@@ -334,22 +334,29 @@ export default function AttendancePage() {
     }
   };
 
-  const requestCameraPermission = async () => {
-    try {
-      if (!navigator.mediaDevices?.getUserMedia) return;
-      let stream: MediaStream | null = null;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' },
-          audio: false,
-        });
-      } catch {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      }
-      stream?.getTracks().forEach((t) => t.stop());
-    } catch {
-      // permission not granted; the in-modal scanner will surface the error UI
+  const cameraPrepRef = useRef<Promise<void> | null>(null);
+
+  const requestCameraPermission = () => {
+    if (!navigator.mediaDevices?.getUserMedia) return Promise.resolve();
+    if (!cameraPrepRef.current) {
+      cameraPrepRef.current = (async () => {
+        try {
+          let stream: MediaStream | null = null;
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: { facingMode: 'environment' },
+              audio: false,
+            });
+          } catch {
+            stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+          }
+          stream?.getTracks().forEach((t) => t.stop());
+        } catch {
+          cameraPrepRef.current = null;
+        }
+      })();
     }
+    return cameraPrepRef.current;
   };
 
   useEffect(() => {
@@ -357,8 +364,8 @@ export default function AttendancePage() {
     return () => clearTimeout(timer);
   }, []);
 
-  const openScanner = () => {
-    requestCameraPermission();
+  const openScanner = async () => {
+    await requestCameraPermission();
     setScanResult(null);
     setScanResolving(false);
     setScanError(null);

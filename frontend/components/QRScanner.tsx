@@ -52,7 +52,9 @@ export function QRScanner({
 
       const onFail = () => {};
 
-      const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
+      const regionWidth = regionRef.current?.offsetWidth ?? 0;
+      const box = Math.max(180, Math.min(250, regionWidth > 0 ? regionWidth - 32 : 250));
+      const config = { fps: 10, qrbox: { width: box, height: box }, aspectRatio: 1.0 };
 
       const cameras = (await Html5Qrcode.getCameras()) as Array<{ id: string; label: string }>;
 
