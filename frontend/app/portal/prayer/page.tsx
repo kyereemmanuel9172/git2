@@ -141,7 +141,7 @@ export default function PortalPrayer() {
                     <span className="block text-xs text-slate-400">Public requests may be shared with the prayer team.</span>
                   </span>
                 </label>
-                <Button type="submit" disabled={submitting}>
+                <Button type="submit" disabled={submitting} className="w-full sm:w-auto">
                   <Send className="h-4 w-4" />
                   {submitting ? 'Submitting…' : 'Submit request'}
                 </Button>
@@ -176,9 +176,9 @@ export default function PortalPrayer() {
                     const isAnswered = r.status === 'PRAYED_FOR' || r.status === 'CLOSED';
                     return (
                       <li key={r.id} className="px-5 py-4">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-slate-800">{r.subject}</p>
+                        <div className="flex items-start gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="break-words text-sm font-semibold text-slate-800">{r.subject}</p>
                             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
                               <span className="inline-flex items-center gap-1">
                                 <Clock4 className="h-3.5 w-3.5" />
@@ -192,7 +192,9 @@ export default function PortalPrayer() {
                               )}
                             </div>
                           </div>
-                          <Badge color={statusColor(r.status)}>{titleCase(r.status)}</Badge>
+                          <span className="shrink-0">
+                            <Badge color={statusColor(r.status)}>{titleCase(r.status)}</Badge>
+                          </span>
                         </div>
                         {r.content && (
                           <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-slate-600">{r.content}</p>
@@ -228,14 +230,20 @@ export default function PortalPrayer() {
                   const followUpDue = s.followUpDate && !isDone && new Date(s.followUpDate).getTime() < Date.now();
                   return (
                     <li key={s.id} className="px-5 py-4">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-semibold text-slate-800">{s.topic || 'Session'}</p>
-                        <Badge color={statusColor(s.status)}>{titleCase(s.status)}</Badge>
-                      </div>
-                      <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
-                        <CalendarCheck className="h-3.5 w-3.5" />
-                        {formatDateTime(s.date)}
-                        {s.counselor?.name ? ` · ${s.counselor.name}` : ''}
+                      <div className="flex items-start gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="break-words text-sm font-semibold text-slate-800">{s.topic || 'Session'}</p>
+                          <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
+                            <CalendarCheck className="h-3.5 w-3.5 shrink-0" />
+                            <span className="break-words">
+                              {formatDateTime(s.date)}
+                              {s.counselor?.name ? ` · ${s.counselor.name}` : ''}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="shrink-0">
+                          <Badge color={statusColor(s.status)}>{titleCase(s.status)}</Badge>
+                        </span>
                       </div>
                       {s.notes && <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-slate-600">{s.notes}</p>}
                       {s.followUpDate && (
