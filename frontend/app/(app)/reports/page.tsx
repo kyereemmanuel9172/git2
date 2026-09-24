@@ -14,6 +14,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { api, download, formatMoney, formatDate, titleCase } from '@/lib/api';
+import { DateRangePicker } from '@/components/date-range-picker';
 import {
   Button,
   Card,
@@ -314,31 +315,17 @@ export default function ReportsPage() {
                 <span className="hidden text-xs text-slate-400 sm:inline">or pick a custom range</span>
               </div>
               <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
-                <div className="grid flex-1 grid-cols-2 gap-3">
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-600">From</label>
-                    <input
-                      type="date"
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-                      value={attFrom}
-                      onChange={(e) => {
-                        setAttPreset('');
-                        setAttFrom(e.target.value);
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-600">To</label>
-                    <input
-                      type="date"
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-                      value={attTo}
-                      onChange={(e) => {
-                        setAttPreset('');
-                        setAttTo(e.target.value);
-                      }}
-                    />
-                  </div>
+                <div className="flex-1">
+                  <DateRangePicker
+                    from={attFrom}
+                    to={attTo}
+                    onChange={({ from, to }) => {
+                      setAttPreset('');
+                      setAttFrom(from);
+                      setAttTo(to);
+                    }}
+                    placeholder="Pick a date range"
+                  />
                 </div>
                 <Button onClick={() => loadAttendance()} disabled={loadingAttendance} className="w-full sm:w-auto">
                   {loadingAttendance ? 'Loading...' : 'Apply filter'}
@@ -353,7 +340,11 @@ export default function ReportsPage() {
                 <StatCard label="Unique members" value={attendance.uniqueMembers} icon={<Users className="h-4 w-4" />} />
                 <StatCard
                   label="Date range"
-                  value={attendance.from && attendance.to ? `${attendance.from} → ${attendance.to}` : 'All'}
+                  value={
+                    attendance.from && attendance.to
+                      ? `${formatDate(attendance.from)} → ${formatDate(attendance.to)}`
+                      : 'All'
+                  }
                   icon={<CalendarCheck className="h-4 w-4" />}
                 />
               </div>
@@ -413,31 +404,17 @@ export default function ReportsPage() {
                 <span className="hidden text-xs text-slate-400 sm:inline">or pick a custom range</span>
               </div>
               <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
-                <div className="grid flex-1 grid-cols-2 gap-3">
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-600">From</label>
-                    <input
-                      type="date"
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-                      value={finFrom}
-                      onChange={(e) => {
-                        setFinPreset('');
-                        setFinFrom(e.target.value);
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-600">To</label>
-                    <input
-                      type="date"
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-                      value={finTo}
-                      onChange={(e) => {
-                        setFinPreset('');
-                        setFinTo(e.target.value);
-                      }}
-                    />
-                  </div>
+                <div className="flex-1">
+                  <DateRangePicker
+                    from={finFrom}
+                    to={finTo}
+                    onChange={({ from, to }) => {
+                      setFinPreset('');
+                      setFinFrom(from);
+                      setFinTo(to);
+                    }}
+                    placeholder="Pick a date range"
+                  />
                 </div>
                 <Button onClick={() => loadFinance()} disabled={loadingFinance} className="w-full sm:w-auto">
                   {loadingFinance ? 'Loading...' : 'Apply filter'}
