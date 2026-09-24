@@ -28,16 +28,22 @@ interface InfoItem {
 
 function InfoCard({ items }: { items: InfoItem[] }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="grid grid-cols-2 gap-3">
       {items.map((item, i) => (
-        <div key={i} className="flex items-start gap-3 rounded-xl border border-slate-100 p-3.5 transition-colors hover:bg-slate-50/50">
-          <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100', item.iconColor ?? 'text-slate-500')}>
+        <div
+          key={i}
+          className="min-w-0 rounded-xl bg-slate-50/80 p-3 ring-1 ring-slate-100 transition-colors hover:bg-slate-50"
+        >
+          <div
+            className={cn(
+              'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white ring-1 ring-slate-100',
+              item.iconColor ?? 'text-slate-500',
+            )}
+          >
             {item.icon}
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{item.label}</p>
-            <p className="mt-0.5 break-words text-sm font-medium text-slate-800">{item.value ?? '—'}</p>
-          </div>
+          <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">{item.label}</p>
+          <p className="mt-0.5 break-words text-sm font-medium text-slate-800">{item.value ?? '—'}</p>
         </div>
       ))}
     </div>
@@ -194,9 +200,9 @@ export default function PortalProfile() {
                   {member.departmentLinks.map((link: any, i: number) => (
                     <div
                       key={i}
-                      className="flex items-center gap-3 rounded-xl border border-slate-100 p-3 transition-colors hover:bg-slate-50/50"
+                      className="flex items-center gap-3 rounded-xl bg-slate-50/80 p-3 ring-1 ring-slate-100 transition-colors hover:bg-slate-50"
                     >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-brand-600 ring-1 ring-slate-100">
                         <Users className="h-5 w-5" />
                       </div>
                       <div className="min-w-0 flex-1">
