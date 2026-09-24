@@ -272,7 +272,7 @@ export default function MemberDetailPage() {
           </div>
           <Button
             variant="outline"
-            className="shrink-0 border-white/40 bg-white/10 text-white hover:bg-white/20"
+            className="w-full shrink-0 border-white/40 bg-white/10 text-white hover:bg-white/20 sm:w-auto"
             onClick={openQr}
           >
             <QrCode className="h-4 w-4" />
@@ -506,7 +506,7 @@ export default function MemberDetailPage() {
                   </span>{' '}
                   using their member ID, email or phone and the password below.
                 </p>
-                <form onSubmit={setPortalPasswordSubmit} className="mt-3 flex items-start gap-2">
+                <form onSubmit={setPortalPasswordSubmit} className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start">
                   <Input
                     type="password"
                     placeholder="New portal password"

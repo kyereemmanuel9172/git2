@@ -637,7 +637,7 @@ export default function MembersPage() {
 
       <div className="flex flex-wrap items-center gap-3">
         <Input
-          className="max-w-xs"
+          className="w-full sm:max-w-xs"
           placeholder="Search by name, member ID, phone or ministry..."
           value={search}
           onChange={(e) => {
@@ -696,83 +696,152 @@ export default function MembersPage() {
               subtitle="Add your first member or adjust your search filters."
             />
           ) : (
-            <Table headers={['Member', 'Member ID', 'Phone', 'Ministry', 'Status', 'Actions']}>
-              {members.map((m) => (
-                <tr key={m.id}>
-                  <Td>
-                    <Link href={`/members/${m.id}`} className="group flex items-center gap-3">
-                      <Avatar name={`${m.firstName} ${m.lastName}`} src={m.photoUrl} />
-                      <span className="font-medium text-brand-600 group-hover:underline">
-                        {m.firstName} {m.lastName}
+            <>
+              <div className="divide-y divide-slate-100 sm:hidden">
+                {members.map((m) => (
+                  <div key={m.id} className="flex items-start gap-3 px-4 py-3">
+                    <Link href={`/members/${m.id}`} className="group flex min-w-0 flex-1 items-center gap-3">
+                      <Avatar name={`${m.firstName} ${m.lastName}`} src={m.photoUrl} className="h-11 w-11" />
+                      <span className="min-w-0">
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span className="truncate text-sm font-semibold text-brand-600 group-hover:underline">
+                            {m.firstName} {m.lastName}
+                          </span>
+                        </span>
+                        <span className="mt-0.5 block truncate text-xs text-slate-500">
+                          {m.memberId && <span className="font-mono">{m.memberId}</span>}
+                          {m.memberId && m.phone && <span className="mx-1 text-slate-300">·</span>}
+                          {m.phone}
+                        </span>
+                        {m.departmentLinks.length > 0 && (
+                          <span className="mt-1.5 flex flex-wrap gap-1">
+                            {m.departmentLinks.map((l, i) => (
+                              <Badge key={i} color="indigo">
+                                {l.department.name}
+                              </Badge>
+                            ))}
+                          </span>
+                        )}
                       </span>
                     </Link>
-                  </Td>
-                  <Td>
-                    {m.memberId ? (
-                      <span className="font-mono text-xs text-slate-600">{m.memberId}</span>
-                    ) : (
-                      '—'
-                    )}
-                  </Td>
-                  <Td>{m.phone ?? '—'}</Td>
-                  <Td>
-                    {m.departmentLinks.length === 0 ? (
-                      '—'
-                    ) : (
-                      <div className="flex max-w-[180px] flex-wrap gap-1">
-                        {m.departmentLinks.map((l, i) => (
-                          <Badge key={i} color="indigo">
-                            {l.department.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </Td>
-                  <Td>
-                    <Badge color={statusColor(m.membershipStatus)}>{m.membershipStatus ?? 'Unknown'}</Badge>
-                  </Td>
-                  <Td>
-                    <div className="flex items-center gap-1">
-                      <Link
-                        href={`/members/${m.id}`}
-                        className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-brand-600"
-                        title="View"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Link>
-                      <button
-                        onClick={() => openEdit(m)}
-                        className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-brand-600"
-                        title="Edit"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      {m.membershipStatus !== 'INACTIVE' && (
-                        <button
-                          onClick={() => handleArchive(m)}
-                          className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-amber-600"
-                          title="Archive"
+                    <div className="flex shrink-0 flex-col items-end gap-1.5">
+                      <Badge color={statusColor(m.membershipStatus)}>{m.membershipStatus ?? 'Unknown'}</Badge>
+                      <div className="flex items-center gap-0.5">
+                        <Link
+                          href={`/members/${m.id}`}
+                          className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-brand-600"
+                          title="View"
                         >
-                          <Archive className="h-4 w-4" />
+                          <Eye className="h-4 w-4" />
+                        </Link>
+                        <button
+                          onClick={() => openEdit(m)}
+                          className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-brand-600"
+                          title="Edit"
+                        >
+                          <Pencil className="h-4 w-4" />
                         </button>
-                      )}
-                      <button
-                        onClick={() => handleDelete(m)}
-                        className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-red-600"
-                        title="Delete"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                        {m.membershipStatus !== 'INACTIVE' && (
+                          <button
+                            onClick={() => handleArchive(m)}
+                            className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-amber-600"
+                            title="Archive"
+                          >
+                            <Archive className="h-4 w-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDelete(m)}
+                          className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-red-600"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
-                  </Td>
-                </tr>
-              ))}
-            </Table>
+                  </div>
+                ))}
+              </div>
+              <div className="hidden sm:block">
+                <Table headers={['Member', 'Member ID', 'Phone', 'Ministry', 'Status', 'Actions']}>
+                  {members.map((m) => (
+                    <tr key={m.id}>
+                      <Td>
+                        <Link href={`/members/${m.id}`} className="group flex items-center gap-3">
+                          <Avatar name={`${m.firstName} ${m.lastName}`} src={m.photoUrl} />
+                          <span className="font-medium text-brand-600 group-hover:underline">
+                            {m.firstName} {m.lastName}
+                          </span>
+                        </Link>
+                      </Td>
+                      <Td>
+                        {m.memberId ? (
+                          <span className="font-mono text-xs text-slate-600">{m.memberId}</span>
+                        ) : (
+                          '—'
+                        )}
+                      </Td>
+                      <Td>{m.phone ?? '—'}</Td>
+                      <Td>
+                        {m.departmentLinks.length === 0 ? (
+                          '—'
+                        ) : (
+                          <div className="flex max-w-[180px] flex-wrap gap-1">
+                            {m.departmentLinks.map((l, i) => (
+                              <Badge key={i} color="indigo">
+                                {l.department.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </Td>
+                      <Td>
+                        <Badge color={statusColor(m.membershipStatus)}>{m.membershipStatus ?? 'Unknown'}</Badge>
+                      </Td>
+                      <Td>
+                        <div className="flex items-center gap-1">
+                          <Link
+                            href={`/members/${m.id}`}
+                            className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-brand-600"
+                            title="View"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Link>
+                          <button
+                            onClick={() => openEdit(m)}
+                            className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-brand-600"
+                            title="Edit"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          {m.membershipStatus !== 'INACTIVE' && (
+                            <button
+                              onClick={() => handleArchive(m)}
+                              className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-amber-600"
+                              title="Archive"
+                            >
+                              <Archive className="h-4 w-4" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDelete(m)}
+                            className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-red-600"
+                            title="Delete"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </Td>
+                    </tr>
+                  ))}
+                </Table>
+              </div>
+            </>
           )}
         </CardBody>
       </Card>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
         <p className="text-sm text-slate-500">
           Showing {start}–{end} of {total} members
         </p>
@@ -797,7 +866,7 @@ export default function MembersPage() {
       </div>
 
       <div>
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
               <Home className="h-5 w-5 text-brand-500" />
