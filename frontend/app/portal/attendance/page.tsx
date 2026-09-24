@@ -200,8 +200,60 @@ export default function PortalAttendance() {
               subtitle="Once you check in at a service, your attendance will appear here."
             />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
+            <>
+              {/* Mobile card list */}
+              <div className="divide-y divide-slate-100 sm:hidden">
+                {data.items.map((r) => {
+                  const duration = r.checkedOutAt
+                    ? Math.round((new Date(r.checkedOutAt).getTime() - new Date(r.checkedInAt).getTime()) / 60000)
+                    : null;
+                  const time = (iso?: string | null) =>
+                    iso
+                      ? new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+                      : null;
+                  return (
+                    <div key={r.id} className="px-4 py-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-800">{formatDate(r.date)}</p>
+                          <span
+                            className={cn(
+                              'mt-1 inline-flex items-center rounded-lg px-2 py-0.5 text-[11px] font-semibold',
+                              serviceColors[r.serviceType] ?? 'bg-slate-100 text-slate-700',
+                            )}
+                          >
+                            {titleCase(r.serviceType)}
+                          </span>
+                        </div>
+                        {duration !== null ? (
+                          <span className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
+                            <Clock4 className="h-3 w-3" />
+                            {duration >= 60 ? `${Math.floor(duration / 60)}h ${duration % 60}m` : `${duration}m`}
+                          </span>
+                        ) : (
+                          <span className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">
+                            <Clock4 className="h-3 w-3" />
+                            Active
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          In {time(r.checkedInAt)}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className={cn('h-1.5 w-1.5 rounded-full', r.checkedOutAt ? 'bg-slate-400' : 'bg-amber-400')} />
+                          {r.checkedOutAt ? `Out ${time(r.checkedOutAt)}` : 'Still checked in'}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Desktop table */}
+              <div className="hidden overflow-x-auto sm:block">
+                <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50/80">
                     <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Date</th>
@@ -253,7 +305,8 @@ export default function PortalAttendance() {
                   })}
                 </tbody>
               </table>
-            </div>
+              </div>
+            </>
           )}
         </CardBody>
       </Card>
