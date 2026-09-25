@@ -20,8 +20,24 @@ import {
   CheckCircle2,
   AlertTriangle,
   XCircle,
+  Wifi,
+  WifiOff,
+  Loader2,
 } from 'lucide-react';
 import { api, download, formatDate, titleCase } from '@/lib/api';
+import {
+  saveMembers,
+  recordCheckIn,
+  getMemberById,
+  setAttendanceStatus,
+  getLocalStats,
+  getLocalPresentIds,
+  getPendingRecords,
+  syncPendingRecords,
+  isServerReachable,
+  isNetworkError,
+  type OfflineMember,
+} from '@/lib/offline';
 import { motion } from 'framer-motion';
 import {
   Button,
@@ -226,6 +242,11 @@ export default function AttendancePage() {
   const [conferenceOpen, setConferenceOpen] = useState(false);
   const [conferenceParticipants, setConferenceParticipants] = useState<Array<{ id?: string; name: string; phone?: string | null }>>([]);
 
+  const [net, setNet] = useState<'online' | 'offline' | 'syncing'>('online');
+  const [localStats, setLocalStats] = useState<{ total: number; today: number; pending: number; synced: number; failed: number } | null>(null);
+  const [localPresentIds, setLocalPresentIds] = useState<string[]>([]);
+  const syncingRef = useRef(false);
+
   useEffect(() => {
     api<{ items: MemberSummary[] }>('/members?limit=200')
       .then((d) => setMembers(d.items))
@@ -234,12 +255,39 @@ export default function AttendancePage() {
 
   const loadRegister = useCallback(() => {
     return api<TodayRegister>('/attendance/register')
-      .then((r) => {
+      .then(async (r) => {
         setRegister(r);
         setPresentPage(1);
         setAbsentPage(1);
+        const offlineMembers: OfflineMember[] = r.notCheckedIn.map((m) => ({
+          id: m.id,
+          firstName: m.firstName,
+          lastName: m.lastName,
+          memberId: m.memberId,
+          photoUrl: m.photoUrl,
+          email: m.email,
+          phone: m.phone,
+        }));
+        for (const rec of r.records) {
+          if (!offlineMembers.some((o) => o.id === rec.member.id)) {
+            offlineMembers.push({
+              id: rec.member.id,
+              firstName: rec.member.firstName,
+              lastName: rec.member.lastName,
+              memberId: rec.member.memberId,
+              photoUrl: rec.member.photoUrl,
+              email: null,
+              phone: rec.member.phone,
+            });
+          }
+        }
+        saveMembers(offlineMembers).catch(() => {});
+        return r;
       })
-      .catch(() => setRegister(null));
+      .catch(() => {
+        setRegister(null);
+        return null;
+      });
   }, []);
 
   const loadRecords = useCallback(() => {
@@ -272,6 +320,45 @@ export default function AttendancePage() {
     }
   };
 
+  const refreshLocal = useCallback(async () => {
+    const [stats, present] = await Promise.all([getLocalStats(), getLocalPresentIds(today)]);
+    setLocalStats(stats);
+    setLocalPresentIds(present);
+  }, [today]);
+
+  const syncAll = useCallback(async () => {
+    if (syncingRef.current) return;
+    const pending = await getPendingRecords();
+    if (pending.length === 0) {
+      setNet((await isServerReachable()) ? 'online' : 'offline');
+      refreshLocal();
+      return;
+    }
+    syncingRef.current = true;
+    setNet('syncing');
+    const result = await syncPendingRecords();
+    syncingRef.current = false;
+    setNet(result.offline ? 'offline' : 'online');
+    await refreshLocal();
+    if (!result.offline) refresh();
+  }, [today, refreshLocal, refresh]);
+
+  useEffect(() => {
+    refreshLocal();
+    const t = setInterval(() => syncAll(), 20000);
+    const onOnline = () => syncAll();
+    const onOffline = () => setNet('offline');
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    window.addEventListener('focus', onOnline);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+      window.removeEventListener('focus', onOnline);
+    };
+  }, [syncAll, refreshLocal]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return members.slice(0, 8);
@@ -289,16 +376,34 @@ export default function AttendancePage() {
   const checkin = async (m: MemberSummary) => {
     setCheckingId(m.id);
     try {
-      const res = await api<{ alreadyCheckedIn: boolean }>('/attendance/checkin', {
-        method: 'POST',
-        body: { memberId: m.id, serviceType, date: today },
+      const local = await recordCheckIn({
+        memberId: m.id,
+        memberName: fullName(m),
+        serviceType,
+        date: today,
       });
-      toast(res.alreadyCheckedIn ? 'Already checked in' : 'Checked in');
-      refresh();
+      if (await isServerReachable()) {
+        const res = await api<{ alreadyCheckedIn: boolean }>('/attendance/checkin', {
+          method: 'POST',
+          body: { memberId: m.id, serviceType, date: today },
+        });
+        await setAttendanceStatus([local.record.localId], 'synced');
+        toast(res.alreadyCheckedIn ? 'Already checked in' : 'Checked in');
+        refresh();
+      } else {
+        setNet('offline');
+        toast(local.already ? 'Already checked in (offline)' : 'Checked in · saved offline');
+      }
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Check-in failed');
+      if (isNetworkError(e)) {
+        setNet('offline');
+        toast('Checked in · saved offline');
+      } else {
+        toast(e instanceof Error ? e.message : 'Check-in failed');
+      }
     } finally {
       setCheckingId(null);
+      refreshLocal();
     }
   };
 
@@ -399,17 +504,64 @@ export default function AttendancePage() {
     } catch {
       // not a URL; use the value as-is
     }
-    try {
-      const member = await api<ScannedMember>(`/members/resolve/${encodeURIComponent(code)}`);
-      setScanResult(member);
-      setScanResolving(false);
 
-      setScanCheckinStatus('checking_in');
-      try {
+    let member: ScannedMember | null = null;
+    try {
+      member = await api<ScannedMember>(`/members/resolve/${encodeURIComponent(code)}`);
+    } catch (e) {
+      if (!isNetworkError(e)) {
+        setScanError(e instanceof Error ? e.message : 'Could not find this member.');
+        setScanResolving(false);
+        return;
+      }
+      const local = await getMemberById(code);
+      if (!local) {
+        setScanError('No internet, and this member is not in the offline member list. Load the register once while online to enable offline scanning.');
+        setScanResolving(false);
+        return;
+      }
+      setNet('offline');
+      member = {
+        id: local.id,
+        firstName: local.firstName,
+        lastName: local.lastName,
+        email: local.email,
+        phone: local.phone,
+        photoUrl: local.photoUrl,
+        memberId: local.memberId,
+        gender: null,
+        dateOfBirth: null,
+        address: null,
+        city: null,
+        maritalStatus: null,
+        occupation: null,
+        membershipStatus: null,
+        joinDate: null,
+        baptismDate: null,
+        notes: null,
+        family: null,
+        departmentLinks: [],
+      };
+    }
+
+    setScanResult(member);
+    setScanResolving(false);
+
+    setScanCheckinStatus('checking_in');
+    let local: { already: boolean; record: { localId: string } } | null = null;
+    try {
+      local = await recordCheckIn({
+        memberId: member.id,
+        memberName: fullName(member),
+        serviceType,
+        date: today,
+      });
+      if (await isServerReachable()) {
         const res = await api<{ alreadyCheckedIn: boolean }>('/attendance/checkin', {
           method: 'POST',
           body: { memberId: member.id, serviceType, date: today },
         });
+        await setAttendanceStatus([local.record.localId], 'synced');
         if (res.alreadyCheckedIn) {
           setScanCheckinStatus('already');
           setScanCheckinMsg(`${fullName(member)} is already checked in today.`);
@@ -420,13 +572,29 @@ export default function AttendancePage() {
           toast('Checked in');
         }
         refresh();
-      } catch {
+      } else {
+        setNet('offline');
+        if (local.already) {
+          setScanCheckinStatus('already');
+          setScanCheckinMsg(`${fullName(member)} is already checked in today.`);
+          toast('Already checked in (offline)');
+        } else {
+          setScanCheckinStatus('success');
+          setScanCheckinMsg(`${fullName(member)} checked in successfully. Saved offline.`);
+          toast('Checked in · saved offline');
+        }
+      }
+    } catch (e) {
+      if (isNetworkError(e)) {
+        setNet('offline');
+        setScanCheckinStatus('success');
+        setScanCheckinMsg(`${fullName(member)} checked in successfully. Saved offline.`);
+      } else {
         setScanCheckinStatus('error');
         setScanCheckinMsg('Check-in failed. Please try again.');
       }
-    } catch (e) {
-      setScanError(e instanceof Error ? e.message : 'Could not find this member.');
-      setScanResolving(false);
+    } finally {
+      refreshLocal();
     }
   };
 
@@ -490,10 +658,11 @@ export default function AttendancePage() {
     : [];
   const presentTotalPages = Math.max(1, Math.ceil((register?.records.length ?? 0) / PRESENT_PAGE_SIZE));
 
-  const presentIds = useMemo(
-    () => new Set((register?.records ?? []).filter((r) => !r.checkedOutAt).map((r) => r.memberId)),
-    [register],
-  );
+  const presentIds = useMemo(() => {
+    const ids = new Set((register?.records ?? []).filter((r) => !r.checkedOutAt).map((r) => r.memberId));
+    for (const id of localPresentIds) ids.add(id);
+    return ids;
+  }, [register, localPresentIds]);
 
   const checkinRows = filtered.slice((checkinPage - 1) * CHECKIN_PAGE_SIZE, checkinPage * CHECKIN_PAGE_SIZE);
   const checkinTotalPages = Math.max(1, Math.ceil(filtered.length / CHECKIN_PAGE_SIZE));
@@ -625,6 +794,44 @@ export default function AttendancePage() {
           </div>
         }
       />
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {net === 'syncing' ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-100 px-2.5 py-1 text-xs font-semibold text-brand-700">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> SYNCING
+            </span>
+          ) : net === 'offline' ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">
+              <WifiOff className="h-3.5 w-3.5" /> OFFLINE · saved locally
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+              <Wifi className="h-3.5 w-3.5" /> ONLINE
+            </span>
+          )}
+          {localStats && (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+              <span className="inline-flex items-center gap-1">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                {localStats.today} on this device
+              </span>
+              {localStats.pending > 0 && (
+                <span className="inline-flex items-center gap-1 font-medium text-amber-600">
+                  <Loader2 className="h-3.5 w-3.5" /> {localStats.pending} waiting to sync
+                </span>
+              )}
+              {localStats.synced > 0 && <span>{localStats.synced} synced</span>}
+            </div>
+          )}
+        </div>
+        {(localStats?.pending ?? 0) > 0 && (
+          <Button size="sm" variant="outline" onClick={syncAll} disabled={net === 'syncing'}>
+            <RefreshCw className={cn('h-3.5 w-3.5', net === 'syncing' && 'animate-spin')} />
+            Sync now
+          </Button>
+        )}
+      </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stats.map((s, i) => (
