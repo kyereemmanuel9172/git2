@@ -35,92 +35,61 @@ export function QRScanner({
     setFailed(null);
     activeRef.current = true;
 
-    try {
-      if (!regionRef.current) return;
+    const onSuccess = (decodedText: string) => {
+      if (!activeRef.current) return;
+      activeRef.current = false;
+      stopScanner();
+      onDetectedRef.current(decodedText);
+    };
+
+    const attempt = async (constraints: MediaTrackConstraints) => {
+      if (!activeRef.current || !regionRef.current) return false;
+      await stopScanner();
+      if (!activeRef.current || !regionRef.current) return false;
       const { Html5Qrcode } = await import('html5-qrcode');
-      if (!activeRef.current || !regionRef.current) return;
+      if (!activeRef.current || !regionRef.current) return false;
 
       const scanner = new Html5Qrcode(regionRef.current.id, { verbose: false });
       scannerRef.current = scanner;
 
-      const onSuccess = (decodedText: string) => {
-        if (!activeRef.current) return;
-        activeRef.current = false;
-        stopScanner();
-        onDetectedRef.current(decodedText);
-      };
-
-      const onFail = () => {};
-
-      const regionWidth = regionRef.current?.offsetWidth ?? 0;
+      const regionWidth = regionRef.current.offsetWidth || 0;
       const box = Math.max(180, Math.min(250, regionWidth > 0 ? regionWidth - 32 : 250));
-      const config = { fps: 10, qrbox: { width: box, height: box }, aspectRatio: 1.0 };
+      const config = { fps: 10, qrbox: { width: box, height: box } };
 
-      const cameras = (await Html5Qrcode.getCameras()) as Array<{ id: string; label: string }>;
-
-      if (!cameras || cameras.length === 0) {
-        throw new Error('No cameras found');
+      try {
+        await scanner.start(constraints, config, onSuccess, () => {});
+        return true;
+      } catch {
+        try { await scanner.stop(); } catch {}
+        try { scanner.clear(); } catch {}
+        scannerRef.current = null;
+        return false;
       }
+    };
+
+    try {
+      if (!regionRef.current) return;
 
       let started = false;
 
-      if (cameras.length === 1) {
-        try {
-          await scanner.start(
-            { deviceId: { exact: cameras[0].id } },
-            config,
-            onSuccess,
-            onFail,
-          );
-          started = true;
-        } catch {
-          if (!activeRef.current) return;
-        }
-      }
-
-      if (!started && activeRef.current) {
-        const rear = cameras.find((c) =>
-          c.label.toLowerCase().includes('back') ||
-          c.label.toLowerCase().includes('rear') ||
-          c.label.toLowerCase().includes('environment') ||
-          c.label.toLowerCase().includes('world'),
+      // 1) Prefer the rear/environment camera by its label, else the first camera.
+      try {
+        const { Html5Qrcode } = await import('html5-qrcode');
+        const cameras = (await Html5Qrcode.getCameras()) as Array<{ id: string; label: string }>;
+        const rear = (cameras ?? []).find((c) =>
+          /back|rear|environment|world/i.test(c.label ?? ''),
         );
-        const candidates = rear ? [rear, ...cameras.filter((c) => c.id !== rear.id)] : cameras;
-
-        for (const cam of candidates) {
-          if (!activeRef.current) return;
-          try {
-            await scanner.start(
-              { deviceId: { exact: cam.id } },
-              config,
-              onSuccess,
-              onFail,
-            );
-            started = true;
-            break;
-          } catch {
-            continue;
-          }
-        }
+        const target = rear ?? (cameras && cameras.length ? cameras[0] : null);
+        if (target) started = await attempt({ deviceId: { exact: target.id } });
+      } catch {
+        started = false;
       }
 
-      if (!started && activeRef.current) {
-        try {
-          await scanner.start({ facingMode: 'environment' }, config, onSuccess, onFail);
-          started = true;
-        } catch {
-          if (!activeRef.current) return;
-        }
-      }
+      // 2) Fall back to the hardware's environment-facing camera.
+      if (!started) started = await attempt({ facingMode: 'environment' });
 
-      if (!started && activeRef.current) {
-        try {
-          await scanner.start({}, config, onSuccess, onFail);
-          started = true;
-        } catch {
-          if (!activeRef.current) return;
-        }
-      }
+      // 3) Final fallback: any default camera.
+      if (!started) started = await attempt({});
 
       if (!started && activeRef.current) {
         throw new Error('Could not start camera');
