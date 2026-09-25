@@ -2,6 +2,8 @@
 
 This guide covers deploying the Church Management System to Vercel (frontend) and Railway (backend).
 
+Live frontend: https://church-management-frontend-nu.vercel.app/members
+
 ## Prerequisites
 
 - GitHub repository with the code
@@ -22,7 +24,7 @@ JWT_SECRET=your-super-secret-key-min-32-chars
 JWT_EXPIRES_IN=8h
 NODE_ENV=production
 PORT=3002
-FRONTEND_URL=https://your-app.vercel.app
+FRONTEND_URL=https://church-management-frontend-nu.vercel.app
 
 # Email (Resend)
 RESEND_API_KEY=re_your_api_key
