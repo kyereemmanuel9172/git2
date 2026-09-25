@@ -3,7 +3,8 @@
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '@/lib/auth';
+import { offlineScopeForUser, useAuth } from '@/lib/auth';
+import { syncPendingRecords } from '@/lib/offline';
 import Sidebar from '@/components/Sidebar';
 import BirthdayPrompt from '@/components/BirthdayPrompt';
 import { Spinner } from '@/components/ui';
@@ -16,6 +17,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
   }, [loading, user, router]);
+
+  useEffect(() => {
+    const scope = offlineScopeForUser(user);
+    if (!scope) return;
+    const sync = () => void syncPendingRecords(scope);
+    sync();
+    const timer = setInterval(sync, 30000);
+    window.addEventListener('online', sync);
+    window.addEventListener('focus', sync);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('online', sync);
+      window.removeEventListener('focus', sync);
+    };
+  }, [user]);
 
   if (loading || !user) {
     return (

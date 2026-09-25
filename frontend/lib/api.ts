@@ -32,40 +32,49 @@ interface RequestOptions {
 export async function api<T = unknown>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, headers, signal } = options;
   const token = getToken();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+  const abort = () => controller.abort();
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...headers,
-    },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-    signal,
-  });
+  if (signal?.aborted) controller.abort();
+  else signal?.addEventListener('abort', abort, { once: true });
 
-  if (response.status === 401) {
-    setToken(null);
-    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/portal')) {
-      window.location.href = '/login';
+  try {
+    const response = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...headers,
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+
+    if (response.status === 401) {
+      setToken(null);
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/portal')) {
+        window.location.href = '/login';
+      }
+      throw new ApiError(401, 'Session expired. Please log in again.');
     }
-    throw new ApiError(401, 'Session expired. Please log in again.');
-  }
 
-  if (!response.ok) {
-    let message = `Request failed (${response.status})`;
-    try {
-      const data = await response.json();
-      if (typeof data?.message === 'string') message = data.message;
-      else if (Array.isArray(data?.message)) message = data.message.join(', ');
-    } catch {
-      // keep default message
+    if (!response.ok) {
+      let message = `Request failed (${response.status})`;
+      try {
+        const data = await response.json();
+        if (typeof data?.message === 'string') message = data.message;
+        else if (Array.isArray(data?.message)) message = data.message.join(', ');
+      } catch {}
+      throw new ApiError(response.status, message);
     }
-    throw new ApiError(response.status, message);
-  }
 
-  if (response.status === 204) return undefined as T;
-  return (await response.json()) as T;
+    if (response.status === 204) return undefined as T;
+    return (await response.json()) as T;
+  } finally {
+    clearTimeout(timeout);
+    signal?.removeEventListener('abort', abort);
+  }
 }
 
 export function download(path: string, filename: string) {

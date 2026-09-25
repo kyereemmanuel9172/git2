@@ -12,6 +12,7 @@
     "start:frontend": "npm --prefix frontend run start",
     "test:backend": "npm --prefix backend run test",
     "test:frontend": "npm --prefix frontend run test:e2e",
-    "lint": "npm --prefix backend run lint; npm --prefix frontend run lint"
+    "typecheck": "npm --prefix backend run typecheck && npm --prefix frontend run typecheck",
+    "lint": "npm run typecheck"
   }
 }

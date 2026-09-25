@@ -25,8 +25,11 @@ import {
   Loader2,
 } from 'lucide-react';
 import { api, download, formatDate, titleCase } from '@/lib/api';
+import { offlineScopeForUser, useAuth } from '@/lib/auth';
 import {
   saveMembers,
+  getMembers,
+  getAttendanceAll,
   recordCheckIn,
   getMemberById,
   setAttendanceStatus,
@@ -37,6 +40,7 @@ import {
   isServerReachable,
   isNetworkError,
   type OfflineMember,
+  type OfflineAttendance,
 } from '@/lib/offline';
 import { motion } from 'framer-motion';
 import {
@@ -71,6 +75,7 @@ interface MemberSummary {
   photoUrl: string | null;
   memberId: string | null;
   phone: string | null;
+  membershipStatus: string | null;
 }
 
 interface RegisterMember {
@@ -156,6 +161,92 @@ const ministryNames = (m: RegisterMember) =>
 
 const formatService = (s: string) => s[0] + s.slice(1).toLowerCase();
 
+function mergeLocalAttendance(register: TodayRegister, localRecords: OfflineAttendance[]): TodayRegister {
+  const known = new Set(register.records.map((record) => `${record.memberId}__${record.serviceType}`));
+  const localRows = localRecords
+    .filter((record) => record.date === register.date && !record.checkedOutAt && !known.has(`${record.memberId}__${record.serviceType}`))
+    .map((record) => ({
+      id: `local:${record.localId}`,
+      memberId: record.memberId,
+      serviceType: record.serviceType,
+      checkedInAt: record.checkedInAt,
+      checkedOutAt: null,
+      member: {
+        id: record.memberId,
+        firstName: record.memberName.split(' ')[0] ?? record.memberName,
+        lastName: record.memberName.split(' ').slice(1).join(' '),
+        photoUrl: null,
+        memberId: null,
+        phone: null,
+      },
+    }));
+  const records = [...register.records, ...localRows];
+  const presentIds = new Set(records.map((record) => record.memberId));
+  const notCheckedIn = register.notCheckedIn.filter((member) => !presentIds.has(member.id));
+  const byType: Record<string, number> = {};
+  for (const record of records) byType[record.serviceType] = (byType[record.serviceType] ?? 0) + 1;
+  const present = presentIds.size;
+  return {
+    ...register,
+    records,
+    present,
+    notCheckedIn,
+    byType,
+    attendanceRate: register.activeMembers === 0 ? 0 : Math.round((present / register.activeMembers) * 1000) / 10,
+  };
+}
+
+function buildLocalRegister(date: string, members: OfflineMember[], records: OfflineAttendance[]): TodayRegister {
+  const registerMembers: RegisterMember[] = members
+    .filter((member) => !member.membershipStatus || member.membershipStatus === 'ACTIVE')
+    .map((member) => ({
+      id: member.id,
+      firstName: member.firstName,
+      lastName: member.lastName,
+      email: member.email,
+      phone: member.phone,
+      memberId: member.memberId,
+      photoUrl: member.photoUrl,
+      departmentLinks: [],
+    }));
+  const memberById = new Map(members.map((member) => [member.id, member]));
+  const localRecords = records
+    .filter((record) => record.date === date && !record.checkedOutAt)
+    .map((record) => {
+      const member = memberById.get(record.memberId);
+      return {
+        id: `local:${record.localId}`,
+        memberId: record.memberId,
+        serviceType: record.serviceType,
+        checkedInAt: record.checkedInAt,
+        checkedOutAt: null,
+        member: {
+          id: record.memberId,
+          firstName: member?.firstName ?? record.memberName.split(' ')[0] ?? record.memberName,
+          lastName: member?.lastName ?? record.memberName.split(' ').slice(1).join(' '),
+          photoUrl: member?.photoUrl ?? null,
+          memberId: member?.memberId ?? null,
+          phone: member?.phone ?? null,
+        },
+      };
+    });
+  const presentIds = new Set(localRecords.map((record) => record.memberId));
+  const notCheckedIn = registerMembers.filter((member) => !presentIds.has(member.id));
+  const byType: Record<string, number> = {};
+  for (const record of localRecords) byType[record.serviceType] = (byType[record.serviceType] ?? 0) + 1;
+  const present = presentIds.size;
+  return {
+    date,
+    serviceScheduled: true,
+    activeMembers: registerMembers.length,
+    present,
+    notCheckedIn,
+    attendanceRate: registerMembers.length === 0 ? 0 : Math.round((present / registerMembers.length) * 1000) / 10,
+    byType,
+    records: localRecords,
+  };
+}
+
 const PRESENT_PAGE_SIZE = 6;
 const ABSENT_PAGE_SIZE = 6;
 const HISTORY_PAGE_SIZE = 6;
@@ -207,6 +298,8 @@ type RegisterTab = 'present' | 'absent' | 'history';
 
 export default function AttendancePage() {
   const { toast, message } = useToast();
+  const { user } = useAuth();
+  const offlineScope = offlineScopeForUser(user) ?? '';
   const today = toYMD(new Date());
 
   const [serviceType, setServiceType] = useState('SUNDAY');
@@ -246,49 +339,97 @@ export default function AttendancePage() {
   const [localStats, setLocalStats] = useState<{ total: number; today: number; pending: number; synced: number; failed: number } | null>(null);
   const [localPresentIds, setLocalPresentIds] = useState<string[]>([]);
   const syncingRef = useRef(false);
+  const scanGenerationRef = useRef(0);
 
   useEffect(() => {
-    api<{ items: MemberSummary[] }>('/members?limit=200')
-      .then((d) => setMembers(d.items))
-      .catch(() => setMembers([]));
-  }, []);
+    let active = true;
+    if (!offlineScope) return;
+    api<{ items: MemberSummary[] }>('/members?limit=200&status=ACTIVE')
+      .then(async (data) => {
+        if (!active) return;
+        setMembers(data.items);
+        await saveMembers(
+          offlineScope,
+          data.items.map((member) => ({
+            id: member.id,
+            firstName: member.firstName,
+            lastName: member.lastName,
+            memberId: member.memberId,
+            photoUrl: member.photoUrl,
+            email: member.email,
+            phone: member.phone,
+            membershipStatus: member.membershipStatus,
+          })),
+        ).catch(() => {});
+      })
+      .catch(async () => {
+        const local = await getMembers(offlineScope).catch(() => []);
+        if (active) {
+          setMembers(
+            local
+              .filter((member) => !member.membershipStatus || member.membershipStatus === 'ACTIVE')
+              .map((member) => ({
+                ...member,
+                membershipStatus: member.membershipStatus ?? null,
+              })),
+          );
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [offlineScope]);
 
   const loadRegister = useCallback(() => {
+    if (!offlineScope) return Promise.resolve(null);
     return api<TodayRegister>('/attendance/register')
-      .then(async (r) => {
-        setRegister(r);
+      .then(async (result) => {
+        const localRecords = await getAttendanceAll(offlineScope).catch(() => []);
+        const merged = mergeLocalAttendance(result, localRecords);
+        setRegister(merged);
         setPresentPage(1);
         setAbsentPage(1);
-        const offlineMembers: OfflineMember[] = r.notCheckedIn.map((m) => ({
-          id: m.id,
-          firstName: m.firstName,
-          lastName: m.lastName,
-          memberId: m.memberId,
-          photoUrl: m.photoUrl,
-          email: m.email,
-          phone: m.phone,
+        const offlineMembers: OfflineMember[] = result.notCheckedIn.map((member) => ({
+          id: member.id,
+          firstName: member.firstName,
+          lastName: member.lastName,
+          memberId: member.memberId,
+          photoUrl: member.photoUrl,
+          email: member.email,
+          phone: member.phone,
+          membershipStatus: 'ACTIVE',
         }));
-        for (const rec of r.records) {
-          if (!offlineMembers.some((o) => o.id === rec.member.id)) {
+        for (const record of result.records) {
+          if (!offlineMembers.some((member) => member.id === record.member.id)) {
             offlineMembers.push({
-              id: rec.member.id,
-              firstName: rec.member.firstName,
-              lastName: rec.member.lastName,
-              memberId: rec.member.memberId,
-              photoUrl: rec.member.photoUrl,
+              id: record.member.id,
+              firstName: record.member.firstName,
+              lastName: record.member.lastName,
+              memberId: record.member.memberId,
+              photoUrl: record.member.photoUrl,
               email: null,
-              phone: rec.member.phone,
+              phone: record.member.phone,
+              membershipStatus: 'ACTIVE',
             });
           }
         }
-        saveMembers(offlineMembers).catch(() => {});
-        return r;
+        saveMembers(offlineScope, offlineMembers).catch(() => {});
+        return merged;
       })
-      .catch(() => {
+      .catch(async () => {
+        const [localMembers, localRecords] = await Promise.all([
+          getMembers(offlineScope).catch(() => []),
+          getAttendanceAll(offlineScope).catch(() => []),
+        ]);
+        if (localMembers.length > 0 || localRecords.length > 0) {
+          const localRegister = buildLocalRegister(today, localMembers, localRecords);
+          setRegister(localRegister);
+          return localRegister;
+        }
         setRegister(null);
         return null;
       });
-  }, []);
+  }, [offlineScope, today]);
 
   const loadRecords = useCallback(() => {
     setLoadingRecords(true);
@@ -311,53 +452,67 @@ export default function AttendancePage() {
     loadRecords();
   }, [loadRecords]);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
       await Promise.all([loadRegister(), loadRecords()]);
     } finally {
       setRefreshing(false);
     }
-  };
+  }, [loadRegister, loadRecords]);
 
   const refreshLocal = useCallback(async () => {
-    const [stats, present] = await Promise.all([getLocalStats(), getLocalPresentIds(today)]);
-    setLocalStats(stats);
-    setLocalPresentIds(present);
-  }, [today]);
-
-  const syncAll = useCallback(async () => {
-    if (syncingRef.current) return;
-    const pending = await getPendingRecords();
-    if (pending.length === 0) {
-      setNet((await isServerReachable()) ? 'online' : 'offline');
-      refreshLocal();
+    if (!offlineScope) {
+      setLocalStats(null);
+      setLocalPresentIds([]);
       return;
     }
+    const [stats, present] = await Promise.all([
+      getLocalStats(offlineScope, today),
+      getLocalPresentIds(offlineScope, today, serviceType),
+    ]);
+    setLocalStats(stats);
+    setLocalPresentIds(present);
+  }, [offlineScope, today, serviceType]);
+
+  const syncAll = useCallback(async (force = false) => {
+    if (!offlineScope || syncingRef.current) return;
     syncingRef.current = true;
-    setNet('syncing');
-    const result = await syncPendingRecords();
-    syncingRef.current = false;
-    setNet(result.offline ? 'offline' : 'online');
-    await refreshLocal();
-    if (!result.offline) refresh();
-  }, [today, refreshLocal, refresh]);
+    try {
+      const pending = await getPendingRecords(offlineScope, force);
+      if (pending.length === 0) {
+        setNet((await isServerReachable()) ? 'online' : 'offline');
+        return;
+      }
+      setNet('syncing');
+      const result = await syncPendingRecords(offlineScope, force);
+      setNet(result.offline ? 'offline' : 'online');
+      if (!result.offline) await refresh();
+    } catch {
+      setNet('offline');
+    } finally {
+      syncingRef.current = false;
+      await refreshLocal().catch(() => {});
+    }
+  }, [offlineScope, refresh, refreshLocal]);
 
   useEffect(() => {
-    refreshLocal();
-    const t = setInterval(() => syncAll(), 20000);
-    const onOnline = () => syncAll();
+    if (!offlineScope) return;
+    void refreshLocal();
+    void syncAll();
+    const timer = setInterval(() => void syncAll(), 20000);
+    const onOnline = () => void syncAll();
     const onOffline = () => setNet('offline');
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', onOffline);
     window.addEventListener('focus', onOnline);
     return () => {
-      clearInterval(t);
+      clearInterval(timer);
       window.removeEventListener('online', onOnline);
       window.removeEventListener('offline', onOffline);
       window.removeEventListener('focus', onOnline);
     };
-  }, [syncAll, refreshLocal]);
+  }, [offlineScope, refreshLocal, syncAll]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -374,9 +529,13 @@ export default function AttendancePage() {
   }, [members, search]);
 
   const checkin = async (m: MemberSummary) => {
+    if (!offlineScope) {
+      toast('Your offline session is not ready');
+      return;
+    }
     setCheckingId(m.id);
     try {
-      const local = await recordCheckIn({
+      const local = await recordCheckIn(offlineScope, {
         memberId: m.id,
         memberName: fullName(m),
         serviceType,
@@ -385,11 +544,11 @@ export default function AttendancePage() {
       if (await isServerReachable()) {
         const res = await api<{ alreadyCheckedIn: boolean }>('/attendance/checkin', {
           method: 'POST',
-          body: { memberId: m.id, serviceType, date: today },
+          body: { memberId: m.id, serviceType, date: today, checkedInAt: local.record.checkedInAt },
         });
-        await setAttendanceStatus([local.record.localId], 'synced');
+        await setAttendanceStatus(offlineScope, [local.record.localId], 'synced');
         toast(res.alreadyCheckedIn ? 'Already checked in' : 'Checked in');
-        refresh();
+        await refresh();
       } else {
         setNet('offline');
         toast(local.already ? 'Already checked in (offline)' : 'Checked in · saved offline');
@@ -403,7 +562,7 @@ export default function AttendancePage() {
       }
     } finally {
       setCheckingId(null);
-      refreshLocal();
+      await refreshLocal().catch(() => {});
     }
   };
 
@@ -412,11 +571,12 @@ export default function AttendancePage() {
     try {
       const res = await api<{ alreadyCheckedOut: boolean }>('/attendance/checkout', {
         method: 'POST',
-        body: { memberId: m.id },
+        body: { memberId: m.id, serviceType },
       });
       toast(res.alreadyCheckedOut ? 'Already checked out' : 'Checked out');
-      refresh();
+      await refresh();
     } catch (e) {
+      if (isNetworkError(e)) setNet('offline');
       toast(e instanceof Error ? e.message : 'Check-out failed');
     } finally {
       setCheckingId(null);
@@ -431,8 +591,9 @@ export default function AttendancePage() {
         body: { recordId },
       });
       toast(res.alreadyCheckedOut ? 'Already checked out' : 'Checked out');
-      refresh();
+      await refresh();
     } catch (e) {
+      if (isNetworkError(e)) setNet('offline');
       toast(e instanceof Error ? e.message : 'Check-out failed');
     } finally {
       setCheckingId(null);
@@ -465,6 +626,7 @@ export default function AttendancePage() {
   };
 
   const openScanner = async () => {
+    scanGenerationRef.current += 1;
     import('html5-qrcode').catch(() => {});
     await requestCameraPermission();
     setScanResult(null);
@@ -476,6 +638,7 @@ export default function AttendancePage() {
   };
 
   const closeScanner = () => {
+    scanGenerationRef.current += 1;
     setScanOpen(false);
     setScanResult(null);
     setScanResolving(false);
@@ -485,6 +648,7 @@ export default function AttendancePage() {
   };
 
   const retryScan = () => {
+    scanGenerationRef.current += 1;
     setScanResult(null);
     setScanResolving(false);
     setScanError(null);
@@ -493,6 +657,7 @@ export default function AttendancePage() {
   };
 
   const handleScanned = async (rawCode: string) => {
+    const generation = scanGenerationRef.current;
     setScanResolving(true);
     setScanError(null);
     setScanCheckinStatus('idle');
@@ -502,19 +667,26 @@ export default function AttendancePage() {
       const segments = url.pathname.split('/').filter(Boolean);
       if (segments.length) code = decodeURIComponent(segments[segments.length - 1]);
     } catch {
-      // not a URL; use the value as-is
     }
+
+    if (generation !== scanGenerationRef.current) return;
 
     let member: ScannedMember | null = null;
     try {
       member = await api<ScannedMember>(`/members/resolve/${encodeURIComponent(code)}`);
     } catch (e) {
+      if (generation !== scanGenerationRef.current) return;
       if (!isNetworkError(e)) {
         setScanError(e instanceof Error ? e.message : 'Could not find this member.');
         setScanResolving(false);
         return;
       }
-      const local = await getMemberById(code);
+      if (!offlineScope) {
+        setScanError('Your offline session is not ready.');
+        setScanResolving(false);
+        return;
+      }
+      const local = await getMemberById(offlineScope, code);
       if (!local) {
         setScanError('No internet, and this member is not in the offline member list. Load the register once while online to enable offline scanning.');
         setScanResolving(false);
@@ -544,24 +716,28 @@ export default function AttendancePage() {
       };
     }
 
+    if (generation !== scanGenerationRef.current) return;
     setScanResult(member);
     setScanResolving(false);
 
     setScanCheckinStatus('checking_in');
-    let local: { already: boolean; record: { localId: string } } | null = null;
+    let local: { already: boolean; record: { localId: string; checkedInAt: string } } | null = null;
     try {
-      local = await recordCheckIn({
+      if (generation !== scanGenerationRef.current) return;
+      local = await recordCheckIn(offlineScope, {
         memberId: member.id,
         memberName: fullName(member),
         serviceType,
         date: today,
       });
+      if (generation !== scanGenerationRef.current) return;
       if (await isServerReachable()) {
         const res = await api<{ alreadyCheckedIn: boolean }>('/attendance/checkin', {
           method: 'POST',
-          body: { memberId: member.id, serviceType, date: today },
+          body: { memberId: member.id, serviceType, date: today, checkedInAt: local.record.checkedInAt },
         });
-        await setAttendanceStatus([local.record.localId], 'synced');
+        if (generation !== scanGenerationRef.current) return;
+        await setAttendanceStatus(offlineScope, [local.record.localId], 'synced');
         if (res.alreadyCheckedIn) {
           setScanCheckinStatus('already');
           setScanCheckinMsg(`${fullName(member)} is already checked in today.`);
@@ -585,6 +761,7 @@ export default function AttendancePage() {
         }
       }
     } catch (e) {
+      if (generation !== scanGenerationRef.current) return;
       if (isNetworkError(e)) {
         setNet('offline');
         setScanCheckinStatus('success');
@@ -594,7 +771,7 @@ export default function AttendancePage() {
         setScanCheckinMsg('Check-in failed. Please try again.');
       }
     } finally {
-      refreshLocal();
+      if (generation === scanGenerationRef.current) await refreshLocal().catch(() => {});
     }
   };
 
@@ -659,10 +836,14 @@ export default function AttendancePage() {
   const presentTotalPages = Math.max(1, Math.ceil((register?.records.length ?? 0) / PRESENT_PAGE_SIZE));
 
   const presentIds = useMemo(() => {
-    const ids = new Set((register?.records ?? []).filter((r) => !r.checkedOutAt).map((r) => r.memberId));
+    const ids = new Set(
+      (register?.records ?? [])
+        .filter((record) => !record.checkedOutAt && record.serviceType === serviceType)
+        .map((record) => record.memberId),
+    );
     for (const id of localPresentIds) ids.add(id);
     return ids;
-  }, [register, localPresentIds]);
+  }, [register, localPresentIds, serviceType]);
 
   const checkinRows = filtered.slice((checkinPage - 1) * CHECKIN_PAGE_SIZE, checkinPage * CHECKIN_PAGE_SIZE);
   const checkinTotalPages = Math.max(1, Math.ceil(filtered.length / CHECKIN_PAGE_SIZE));
@@ -822,11 +1003,14 @@ export default function AttendancePage() {
                 </span>
               )}
               {localStats.synced > 0 && <span>{localStats.synced} synced</span>}
+              {localStats.failed > 0 && (
+                <span className="font-medium text-red-600">{localStats.failed} need attention</span>
+              )}
             </div>
           )}
         </div>
-        {(localStats?.pending ?? 0) > 0 && (
-          <Button size="sm" variant="outline" onClick={syncAll} disabled={net === 'syncing'}>
+        {(localStats?.pending ?? 0) + (localStats?.failed ?? 0) > 0 && (
+          <Button size="sm" variant="outline" onClick={() => void syncAll(true)} disabled={net === 'syncing'}>
             <RefreshCw className={cn('h-3.5 w-3.5', net === 'syncing' && 'animate-spin')} />
             Sync now
           </Button>
@@ -1441,16 +1625,18 @@ export default function AttendancePage() {
           participants={conferenceParticipants}
           onClose={() => setConferenceOpen(false)}
           onCheckIn={async (memberId) => {
-            try {
-              await api('/attendance/checkin', {
-                method: 'POST',
-                body: { memberId, serviceType },
-              });
-              toast('Member checked in after call');
-              loadRegister();
-            } catch {
-              // silently ignore
-            }
+            const participant = conferenceParticipants.find((item) => item.id === memberId);
+            if (!participant) return;
+            await checkin({
+              id: participant.id ?? memberId,
+              firstName: participant.name,
+              lastName: '',
+              email: null,
+              photoUrl: null,
+              memberId: null,
+              phone: participant.phone ?? null,
+              membershipStatus: 'ACTIVE',
+            });
           }}
         />
       </Modal>

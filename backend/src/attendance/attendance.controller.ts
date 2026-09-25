@@ -9,6 +9,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { RequireChurchId } from '../common/decorators/require-church-id.decorator';
 import { AuditService } from '../audit/audit.service';
 
 @ApiTags('attendance')
@@ -22,11 +23,12 @@ export class AttendanceController {
   ) {}
 
   @Post('checkin')
+  @Roles(Role.SUPER_ADMIN, Role.CHURCH_ADMIN, Role.SENIOR_PASTOR, Role.PASTOR, Role.DEPARTMENT_LEADER)
   @ApiOperation({ summary: 'Check in a member for a service' })
   @ApiResponse({ status: 201, description: 'Check-in successful or already checked in' })
   @ApiResponse({ status: 400, description: 'Invalid input' })
-  async checkIn(@Body() dto: CheckInDto, @CurrentUser('id') actorId: string, @Req() req: Request, @CurrentUser('churchId') churchId?: string | null) {
-    const result = await this.attendanceService.checkIn(dto, actorId, churchId ?? undefined);
+  async checkIn(@Body() dto: CheckInDto, @CurrentUser('id') actorId: string, @Req() req: Request, @RequireChurchId() churchId: string) {
+    const result = await this.attendanceService.checkIn(dto, actorId, churchId);
     if (!result.alreadyCheckedIn) {
       await this.audit.log('ATTENDANCE_CHECKIN', 'Member', dto.memberId, `Checked in for ${dto.serviceType}`, actorId, req.ip);
     }
@@ -34,11 +36,12 @@ export class AttendanceController {
   }
 
   @Post('checkout')
+  @Roles(Role.SUPER_ADMIN, Role.CHURCH_ADMIN, Role.SENIOR_PASTOR, Role.PASTOR, Role.DEPARTMENT_LEADER)
   @ApiOperation({ summary: 'Check out a member from a service' })
   @ApiResponse({ status: 200, description: 'Check-out successful or already checked out' })
   @ApiResponse({ status: 400, description: 'Invalid input' })
-  async checkOut(@Body() dto: CheckOutDto, @CurrentUser('id') actorId: string, @Req() req: Request, @CurrentUser('churchId') churchId?: string | null) {
-    const result = await this.attendanceService.checkOut(dto, actorId, churchId ?? undefined);
+  async checkOut(@Body() dto: CheckOutDto, @CurrentUser('id') actorId: string, @Req() req: Request, @RequireChurchId() churchId: string) {
+    const result = await this.attendanceService.checkOut(dto, actorId, churchId);
     if (!result.alreadyCheckedOut) {
       await this.audit.log('ATTENDANCE_CHECKOUT', 'Member', result.record.memberId, `Checked out for ${result.record.serviceType}`, actorId, req.ip);
     }

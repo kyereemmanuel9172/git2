@@ -11,81 +11,160 @@ export class AttendanceService {
   constructor(private prisma: PrismaService) {}
 
   async checkIn(dto: CheckInDto, actorId?: string, churchId?: string) {
-    const member = await this.prisma.member.findUnique({ where: { id: dto.memberId, ...(churchId ? { churchId } : {}) } });
-    if (!member) throw new BadRequestException('Member not found');
-
-    const now = new Date();
-    const date = dto.date
-      ? new Date(Date.UTC(dto.date.getUTCFullYear(), dto.date.getUTCMonth(), dto.date.getUTCDate()))
-      : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    const dayStart = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-    const dayEnd = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 23, 59, 59, 999));
-
-    const existing = await this.prisma.attendanceRecord.findFirst({
-      where: {
-        memberId: dto.memberId,
-        serviceType: dto.serviceType,
-        date: { gte: dayStart, lte: dayEnd },
-      },
+    const scopedChurchId = this.requireChurchId(churchId);
+    const member = await this.prisma.member.findFirst({
+      where: { id: dto.memberId, churchId: scopedChurchId },
     });
-    if (existing) {
-      if (existing.checkedOutAt) {
-        const record = await this.prisma.attendanceRecord.update({
-          where: { id: existing.id },
-          data: { checkedInAt: now, checkedOutAt: null, checkedOutBy: null, checkedInBy: actorId },
-          include: { member: true },
-        });
-        return { alreadyCheckedIn: false, record };
-      }
-      return { alreadyCheckedIn: true, record: existing };
+    if (!member) throw new BadRequestException('Member not found');
+    if (member.membershipStatus !== MemberStatus.ACTIVE) {
+      throw new BadRequestException('Only active members can check in');
     }
 
-    const record = await this.prisma.attendanceRecord.create({
-      data: {
-        memberId: dto.memberId,
-        churchId: churchId ?? '',
-        serviceType: dto.serviceType,
-        date,
-        checkedInAt: now,
-        checkedInBy: actorId,
-        notes: dto.notes,
-      },
-      include: { member: true },
-    });
-    return { alreadyCheckedIn: false, record };
+    const now = new Date();
+    const checkedInAt = dto.checkedInAt ?? now;
+    const { start: date, end: dayEnd } = this.dayRange(dto.date ?? checkedInAt);
+    const existingWhere: Prisma.AttendanceRecordWhereInput = {
+      memberId: dto.memberId,
+      churchId: scopedChurchId,
+      serviceType: dto.serviceType,
+      date: { gte: date, lte: dayEnd },
+    };
+
+    const existing = await this.prisma.attendanceRecord.findFirst({ where: existingWhere });
+    if (existing) return this.reopenOrReturn(existing, scopedChurchId, checkedInAt, actorId);
+
+    try {
+      const record = await this.prisma.attendanceRecord.create({
+        data: {
+          memberId: dto.memberId,
+          churchId: scopedChurchId,
+          serviceType: dto.serviceType,
+          date,
+          checkedInAt,
+          checkedInBy: actorId ?? null,
+          notes: dto.notes,
+        },
+        include: { member: true },
+      });
+      return { alreadyCheckedIn: false, record };
+    } catch (error) {
+      if (!this.isUniqueConstraintError(error)) throw error;
+      const concurrent = await this.prisma.attendanceRecord.findFirst({ where: existingWhere });
+      if (!concurrent) throw error;
+      return this.reopenOrReturn(concurrent, scopedChurchId, checkedInAt, actorId);
+    }
   }
 
   async checkOut(dto: CheckOutDto, actorId?: string, churchId?: string) {
+    const scopedChurchId = this.requireChurchId(churchId);
     let record: AttendanceRecord | null;
     if (dto.recordId) {
-      record = await this.prisma.attendanceRecord.findUnique({ where: { id: dto.recordId } });
-      if (record && churchId && record.churchId !== churchId) record = null;
+      record = await this.prisma.attendanceRecord.findFirst({
+        where: { id: dto.recordId, churchId: scopedChurchId },
+      });
       if (!record) throw new BadRequestException('Attendance record not found');
+      if (dto.serviceType && record.serviceType !== dto.serviceType) {
+        throw new BadRequestException('Attendance record is for a different service');
+      }
       if (record.checkedOutAt) return { alreadyCheckedOut: true, record };
     } else {
-      const member = await this.prisma.member.findUnique({ where: { id: dto.memberId, ...(churchId ? { churchId } : {}) } });
+      if (!dto.memberId) throw new BadRequestException('Record ID or member ID is required');
+      const member = await this.prisma.member.findFirst({
+        where: { id: dto.memberId, churchId: scopedChurchId },
+      });
       if (!member) throw new BadRequestException('Member not found');
-      const now = new Date();
-      const dayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-      const dayEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+      const { start, end } = this.dayRange(new Date());
       record = await this.prisma.attendanceRecord.findFirst({
         where: {
           memberId: dto.memberId,
+          churchId: scopedChurchId,
           checkedOutAt: null,
-          date: { gte: dayStart, lte: dayEnd },
-          ...(churchId ? { churchId } : {}),
+          ...(dto.serviceType ? { serviceType: dto.serviceType } : {}),
+          date: { gte: start, lte: end },
         },
         orderBy: { checkedInAt: 'desc' },
       });
       if (!record) throw new BadRequestException('This member has no open check-in today');
     }
 
-    const updated = await this.prisma.attendanceRecord.update({
-      where: { id: record.id },
-      data: { checkedOutAt: new Date(), checkedOutBy: actorId },
+    const update = await this.prisma.attendanceRecord.updateMany({
+      where: { id: record.id, churchId: scopedChurchId, checkedOutAt: null },
+      data: { checkedOutAt: new Date(), checkedOutBy: actorId ?? null },
+    });
+    if (update.count === 0) {
+      const current = await this.findRecord(record.id, scopedChurchId);
+      if (!current) throw new BadRequestException('Attendance record not found');
+      if (current.checkedOutAt) return { alreadyCheckedOut: true, record: current };
+      throw new BadRequestException('Attendance record could not be checked out');
+    }
+
+    const updated = await this.findRecord(record.id, scopedChurchId);
+    if (!updated) throw new BadRequestException('Attendance record not found');
+    return { alreadyCheckedOut: false, record: updated };
+  }
+
+  private async reopenOrReturn(
+    existing: AttendanceRecord,
+    churchId: string,
+    checkedInAt: Date,
+    actorId?: string,
+  ) {
+    if (!existing.checkedOutAt) return { alreadyCheckedIn: true, record: existing };
+
+    const data = {
+      checkedInAt,
+      checkedOutAt: null,
+      checkedOutBy: null,
+      checkedInBy: actorId ?? null,
+    };
+    let update = await this.prisma.attendanceRecord.updateMany({
+      where: { id: existing.id, churchId, checkedOutAt: { not: null } },
+      data,
+    });
+
+    if (update.count === 0) {
+      const current = await this.findRecord(existing.id, churchId);
+      if (!current) throw new BadRequestException('Attendance record not found');
+      if (!current.checkedOutAt) return { alreadyCheckedIn: true, record: current };
+      update = await this.prisma.attendanceRecord.updateMany({
+        where: { id: existing.id, churchId, checkedOutAt: { not: null } },
+        data,
+      });
+    }
+
+    if (update.count === 0) {
+      const current = await this.findRecord(existing.id, churchId);
+      if (current && !current.checkedOutAt) return { alreadyCheckedIn: true, record: current };
+      throw new BadRequestException('Attendance record could not be reopened');
+    }
+
+    const record = await this.findRecord(existing.id, churchId);
+    if (!record) throw new BadRequestException('Attendance record not found');
+    return { alreadyCheckedIn: false, record };
+  }
+
+  private findRecord(id: string, churchId: string) {
+    return this.prisma.attendanceRecord.findFirst({
+      where: { id, churchId },
       include: { member: true },
     });
-    return { alreadyCheckedOut: false, record: updated };
+  }
+
+  private dayRange(value: Date) {
+    const start = new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
+    const end = new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate(), 23, 59, 59, 999));
+    return { start, end };
+  }
+
+  private requireChurchId(churchId?: string) {
+    if (typeof churchId !== 'string' || churchId.trim().length === 0) {
+      throw new BadRequestException('Church ID is required');
+    }
+    return churchId;
+  }
+
+  private isUniqueConstraintError(error: unknown) {
+    return typeof error === 'object' && error !== null && 'code' in error && (error as { code?: string }).code === 'P2002';
   }
 
   async findByMember(memberId: string, churchId?: string) {

@@ -12,6 +12,7 @@
     "prisma:deploy": "prisma migrate deploy",
     "seed": "ts-node prisma/seed.ts",
     "test": "jest",
+    "typecheck": "tsc --noEmit",
     "test:cov": "jest --coverage",
     "test:watch": "jest --watch"
   },
