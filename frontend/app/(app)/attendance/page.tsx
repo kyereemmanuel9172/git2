@@ -360,6 +360,7 @@ export default function AttendancePage() {
   };
 
   const openScanner = async () => {
+    import('html5-qrcode').catch(() => {});
     await requestCameraPermission();
     setScanResult(null);
     setScanResolving(false);
