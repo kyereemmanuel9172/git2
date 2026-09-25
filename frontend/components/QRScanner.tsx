@@ -20,6 +20,7 @@ export function QRScanner({
   onErrorRef.current = onError;
 
   const [failed, setFailed] = useState<string | null>(null);
+  const [failedDetail, setFailedDetail] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const stopScanner = async () => {
@@ -34,6 +35,8 @@ export function QRScanner({
     await stopScanner();
     setFailed(null);
     activeRef.current = true;
+
+    await new Promise((r) => setTimeout(r, 350));
 
     const onSuccess = (decodedText: string) => {
       if (!activeRef.current) return;
@@ -110,6 +113,7 @@ export function QRScanner({
         message = `Camera error: ${raw}`;
       }
       setFailed(message);
+      setFailedDetail(raw);
       onErrorRef.current?.(message);
     }
   };
@@ -166,6 +170,9 @@ export function QRScanner({
         <p className="max-w-sm text-xs text-slate-400">
           Camera access needs HTTPS (or localhost). If the issue persists, check your browser settings.
         </p>
+        {failedDetail && (
+          <p className="max-w-sm break-all text-center font-mono text-[10px] text-slate-400">{failedDetail}</p>
+        )}
         <div className="flex flex-wrap items-center justify-center gap-2">
           <button
             type="button"
