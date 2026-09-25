@@ -359,11 +359,6 @@ export default function AttendancePage() {
     return cameraPrepRef.current;
   };
 
-  useEffect(() => {
-    const timer = setTimeout(requestCameraPermission, 600);
-    return () => clearTimeout(timer);
-  }, []);
-
   const openScanner = async () => {
     await requestCameraPermission();
     setScanResult(null);
